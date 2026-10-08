@@ -1,9 +1,10 @@
 {
   "name": "Rough Record Fee Tracker",
   "short_name": "Fee Tracker",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#1e3a8a",
   "theme_color": "#1e3a8a",
   "icons": [
@@ -17,7 +18,7 @@
       "src": "https://cdn-icons-png.flaticon.com/512/2997/2997295.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable any"
     }
   ]
 }
