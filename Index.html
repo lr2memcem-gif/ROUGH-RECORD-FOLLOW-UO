@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e3a8a">
+  <title>Rough Record Fee Tracker</title>
+  <style>
+    :root {
+      --primary: #1e40af;
+      --primary-hover: #1d4ed8;
+      --primary-light: #eff6ff;
+      --emerald: #059669;
+      --emerald-light: #ecfdf5;
+      --emerald-border: #a7f3d0;
+      --rose: #e11d48;
+      --rose-light: #fff1f2;
+      --rose-border: #fecdd3;
+      --amber: #d97706;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-400: #94a3b8;
+      --slate-600: #475569;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: #f1f5f9;
+      margin: 0;
+      padding: 16px 12px;
+      color: var(--slate-800);
+      line-height: 1.45;
+    }
+
+    .app-shell {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    /* Top Brand Bar */
+    .top-header {
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      color: white;
+      padding: 18px 24px;
+      border-radius: var(--radius-lg);
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .top-header h1 {
+      font-size: 20px;
+      margin: 0;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .top-header p {
+      margin: 3px 0 0 0;
+      font-size: 13px;
+      color: #bfdbfe;
+    }
+
+    /* Cards */
+    .card {
+      background: white;
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin-bottom: 14px;
+      border: 1px solid var(--slate-200);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Segmented Class Selector */
+    .sem-switcher {
+      display: flex;
+      background: var(--slate-100);
+      padding: 4px;
+      border-radius: var(--radius-md);
+      gap: 4px;
+      margin-bottom: 14px;
+      border: 1px solid var(--slate-200);
+    }
+    .sem-option {
+      flex: 1;
+      text-align: center;
+      padding: 10px 8px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13.5px;
+      color: var(--slate-600);
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+    .sem-option:hover { color: var(--slate-900); }
+    .sem-option.active {
+      background: white;
+      color: var(--primary);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+    }
+
+    /* Dashboard Metric Counters */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .stat-tile {
+      background: white;
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      border: 1px solid var(--slate-200);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .stat-tile span {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--slate-600);
+    }
+    .stat-tile strong {
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .stat-total strong { color: var(--slate-800); }
+    .stat-paid strong { color: var(--emerald); }
+    .stat-pending strong { color: var(--rose); }
+
+    /* Fast Roll Input Panel */
+    .input-box-wrapper {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      margin-top: 8px;
+    }
+    .roll-field {
+      flex: 1;
+      padding: 14px 16px;
+      font-size: 17px;
+      font-weight: 600;
+      border: 2px solid var(--slate-200);
+      border-radius: var(--radius-md);
+      outline: none;
+      transition: border-color 0.15s ease;
+      background: var(--slate-50);
+      color: var(--slate-900);
+    }
+    .roll-field:focus {
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+    .roll-field::placeholder {
+      font-weight: 400;
+      color: var(--slate-400);
+      font-size: 15px;
+    }
+
+    /* Feedback Banner */
+    .msg-banner {
+      min-height: 24px;
+      margin-top: 8px;
+      font-size: 13.5px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 9px 15px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-accent {
+      background: var(--emerald);
+      color: white;
+      padding: 0 24px;
+      font-size: 15px;
+    }
+    .btn-accent:hover { background: #047857; }
+    .btn-light {
+      background: white;
+      border-color: var(--slate-200);
+      color: var(--slate-600);
+    }
+    .btn-light:hover {
+      background: var(--slate-100);
+      color: var(--slate-900);
+    }
+    .btn-danger {
+      background: var(--rose-light);
+      border-color: var(--rose-border);
+      color: var(--rose);
+    }
+    .btn-danger:hover { background: #ffe4e6; }
+
+    /* Filter Pill Group */
+    .filter-pills {
+      display: flex;
+      gap: 6px;
+    }
+    .pill {
+      border: 1px solid var(--slate-200);
+      background: white;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--slate-600);
+      transition: all 0.15s ease;
+    }
+    .pill:hover { background: var(--slate-100); }
+    .pill.active-pending {
+      background: var(--rose-light);
+      color: var(--rose);
+      border-color: var(--rose-border);
+    }
+    .pill.active-paid {
+      background: var(--emerald-light);
+      color: var(--emerald);
+      border-color: var(--emerald-border);
+    }
+    .pill.active-all {
+      background: var(--primary-light);
+      color: var(--primary);
+      border-color: #bfdbfe;
+    }
+
+    /* Headings Accordion Panel */
+    .collapsible-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .input-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .cfg-input {
+      padding: 8px 12px;
+      border: 1px solid var(--slate-200);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      outline: none;
+      background: var(--slate-50);
+    }
+    .cfg-input:focus { border-color: var(--primary); background: white; }
+
+    /* Data Table */
+    .table-container {
+      overflow-x: auto;
+      margin-top: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+    }
+    th {
+      background: var(--slate-100);
+      color: var(--slate-600);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      padding: 10px 12px;
+      border-top: 1px solid var(--slate-200);
+      border-bottom: 1px solid var(--slate-200);
+      text-align: left;
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--slate-100);
+      vertical-align: middle;
+    }
+    tbody tr:hover { background: #fafafa; }
+
+    /* Status Badges */
+    .status-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 12px;
+    }
+    .status-tag.paid {
+      background: var(--emerald-light);
+      color: var(--emerald);
+      border: 1px solid var(--emerald-border);
+    }
+    .status-tag.pending {
+      background: var(--rose-light);
+      color: var(--rose);
+      border: 1px solid var(--rose-border);
+    }
+
+    /* Print Document Styles */
+    .print-doc-header {
+      display: none;
+      text-align: center;
+      border-bottom: 2px solid var(--slate-800);
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .print-doc-header h2 { margin: 0; font-size: 18px; font-weight: 800; text-transform: uppercase; }
+    .print-doc-header h4 { margin: 3px 0; font-size: 14px; font-weight: 600; color: #334155; }
+    .print-doc-header h5 { margin: 3px 0; font-size: 13px; font-weight: 700; }
+    .print-meta-line {
+      font-size: 11.5px;
+      color: #64748b;
+      margin-top: 4px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    @media print {
+      body { background: white; padding: 0; color: black; }
+      .no-print { display: none !important; }
+      .card { border: none; box-shadow: none; padding: 0; }
+      .print-doc-header { display: block !important; }
+      table { border-collapse: collapse; }
+      th, td { border: 1px solid #475569; padding: 6px 10px; }
+      th { background: #f1f5f9 !important; color: black !important; }
+    }
+
+    @media (max-width: 650px) {
+      .input-grid-3 { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: 1fr; }
+      .input-box-wrapper { flex-direction: column; }
+      .btn-accent { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- Brand Header -->
+  <header class="top-header no-print">
+    <div>
+      <h1>Rough Record Fee Tracker</h1>
+      <p>Department Fee Collection & Daily Due List Generator</p>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn btn-light" onclick="downloadTemplate()">⬇ CSV Template</button>
+      <input type="file" id="fileUploadInput" accept=".csv" style="display: none;" onchange="handleFileUpload(event)">
+      <button class="btn btn-light" onclick="document.getElementById('fileUploadInput').click()">📁 Upload CSV</button>
+    </div>
+  </header>
+
+  <div class="no-print">
+    <!-- Academic Year Nav Tabs -->
+    <div class="sem-switcher">
+      <div class="sem-option active" id="tab1" onclick="switchSem('1st Year (Sem 1)')">1st Year (Sem 1)</div>
+      <div class="sem-option" id="tab2" onclick="switchSem('2nd Year (Sem 3)')">2nd Year (Sem 3)</div>
+      <div class="sem-option" id="tab3" onclick="switchSem('3rd Year (Sem 5)')">3rd Year (Sem 5)</div>
+    </div>
+
+    <!-- Live Stat Counters -->
+    <div class="stats-row">
+      <div class="stat-tile stat-total">
+        <span>Total Students</span>
+        <strong id="cAll">0</strong>
+      </div>
+      <div class="stat-tile stat-paid">
+        <span>Remitted (Paid)</span>
+        <strong id="cPaid">0</strong>
+      </div>
+      <div class="stat-tile stat-pending">
+        <span>Pending Dues</span>
+        <strong id="cPending">0</strong>
+      </div>
+    </div>
+
+    <!-- Quick Roll Number Entry Panel -->
+    <div class="card" style="border-top: 3px solid var(--primary);">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: 700; font-size: 14px; color: var(--slate-900);">Quick Fee Remittance</span>
+        <span style="font-size: 12px; color: var(--slate-400);">Current: <b id="activeClassLabel" style="color: var(--primary);">1st Year (Sem 1)</b></span>
+      </div>
+      <div class="input-box-wrapper">
+        <input type="text" id="rollInput" class="roll-field" placeholder="Enter Roll Number & press Enter" autofocus onkeydown="handleKey(event)">
+        <button class="btn btn-accent" onclick="markPaid()">Mark Paid</button>
+      </div>
+      <div id="statusAlert" class="msg-banner"></div>
+    </div>
+
+    <!-- Institutional Headings Settings (Foldable) -->
+    <div class="card">
+      <div class="collapsible-header" onclick="toggleSettings()">
+        <span style="font-size: 13px; font-weight: 600; color: var(--slate-600);">⚙ Configure Report Headings (Saved automatically)</span>
+        <span id="settingsCaret" style="font-size: 12px; color: var(--slate-400);">▼</span>
+      </div>
+      <div id="settingsPanel" style="display: none;">
+        <div class="input-grid-3">
+          <input type="text" id="cfgH1" class="cfg-input" placeholder="Main Header (e.g. Poly Name)" oninput="saveHeadings()">
+          <input type="text" id="cfgH2" class="cfg-input" placeholder="Sub Header (e.g. Dept of Mech)" oninput="saveHeadings()">
+          <input type="text" id="cfgH3" class="cfg-input" placeholder="Purpose (e.g. Rough Record Fee)" oninput="saveHeadings()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Student Roster & Printable Table Area -->
+  <div class="card">
+    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
+      <div class="filter-pills">
+        <button class="pill active-pending" id="pillPending" onclick="setFilter('pending')">Pending Only</button>
+        <button class="pill" id="pillPaid" onclick="setFilter('paid')">Paid Only</button>
+        <button class="pill" id="pillAll" onclick="setFilter('all')">All Records</button>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-light" onclick="exportCSV()">Export CSV</button>
+        <button class="btn btn-primary" onclick="window.print()">🖨 Print / PDF Report</button>
+        <button class="btn btn-danger" onclick="clearSem()" title="Clear class data">Clear Class</button>
+      </div>
+    </div>
+
+    <!-- Header Visible in Print Only -->
+    <div class="print-doc-header">
+      <h2 id="displayH1">GOVERNMENT POLYTECHNIC COLLEGE</h2>
+      <h4 id="displayH2">DEPARTMENT OF MECHANICAL ENGINEERING</h4>
+      <h5 id="displayH3">ROUGH RECORD FEE REMITTANCE LIST</h5>
+      <div class="print-meta-line">
+        <span id="printClass">Class: 1st Year (Sem 1)</span>
+        <span id="printFilter">Status: Pending Dues</span>
+        <span id="printDate"></span>
+      </div>
+    </div>
+
+    <!-- Data List -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 45px; text-align: center;">#</th>
+            <th style="width: 130px;">Roll No</th>
+            <th>Student Name</th>
+            <th style="width: 110px;">Payment Status</th>
+            <th style="width: 120px;">Remitted On</th>
+            <th style="width: 80px; text-align: center;" class="no-print">Action</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let activeSem = '1st Year (Sem 1)';
+  let activeFilter = 'pending';
+
+  function getKey() { return `rr_fee_${activeSem}`; }
+  function loadList() { return JSON.parse(localStorage.getItem(getKey()) || '[]'); }
+  function saveList(list) { localStorage.setItem(getKey(), JSON.stringify(list)); render(); }
+
+  function switchSem(sem) {
+    activeSem = sem;
+    document.getElementById('tab1').classList.toggle('active', sem === '1st Year (Sem 1)');
+    document.getElementById('tab2').classList.toggle('active', sem === '2nd Year (Sem 3)');
+    document.getElementById('tab3').classList.toggle('active', sem === '3rd Year (Sem 5)');
+    document.getElementById('activeClassLabel').textContent = sem;
+    showMsg('', '');
+    render();
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter') markPaid();
+  }
+
+  function showMsg(text, type) {
+    const el = document.getElementById('statusAlert');
+    el.textContent = text;
+    if (type === 'success') el.style.color = 'var(--emerald)';
+    else if (type === 'warn') el.style.color = 'var(--amber)';
+    else el.style.color = 'var(--rose)';
+  }
+
+  function markPaid() {
+    const field = document.getElementById('rollInput');
+    const roll = field.value.trim().toLowerCase();
+    if (!roll) return;
+
+    const list = loadList();
+    const item = list.find(s => s.roll.toLowerCase() === roll);
+
+    if (!item) {
+      showMsg(`Roll number "${field.value.trim()}" is not registered in ${activeSem}.`, 'error');
+      return;
+    }
+
+    if (item.paid) {
+      showMsg(`Roll ${item.roll} was already remitted on ${item.datePaid}.`, 'warn');
+    } else {
+      item.paid = true;
+      item.datePaid = new Date().toLocaleDateString('en-GB');
+      saveList(list);
+      showMsg(`Marked Paid: Roll ${item.roll} (${item.name})`, 'success');
+    }
+
+    field.value = '';
+    field.focus();
+  }
+
+  function toggleRow(roll) {
+    const list = loadList();
+    const item = list.find(s => s.roll === roll);
+    if (!item) return;
+
+    item.paid = !item.paid;
+    item.datePaid = item.paid ? new Date().toLocaleDateString('en-GB') : null;
+    saveList(list);
+  }
+
+  function toggleSettings() {
+    const p = document.getElementById('settingsPanel');
+    const c = document.getElementById('settingsCaret');
+    const isOpen = p.style.display === 'block';
+    p.style.display = isOpen ? 'none' : 'block';
+    c.textContent = isOpen ? '▼' : '▲';
+  }
+
+  function loadHeadings() {
+    const h1 = localStorage.getItem('rr_h1') || 'GOVERNMENT POLYTECHNIC COLLEGE';
+    const h2 = localStorage.getItem('rr_h2') || 'DEPARTMENT OF MECHANICAL ENGINEERING';
+    const h3 = localStorage.getItem('rr_h3') || 'ROUGH RECORD FEE REMITTANCE LIST';
+
+    document.getElementById('cfgH1').value = h1;
+    document.getElementById('cfgH2').value = h2;
+    document.getElementById('cfgH3').value = h3;
+
+    document.getElementById('displayH1').textContent = h1;
+    document.getElementById('displayH2').textContent = h2;
+    document.getElementById('displayH3').textContent = h3;
+  }
+
+  function saveHeadings() {
+    const h1 = document.getElementById('cfgH1').value;
+    const h2 = document.getElementById('cfgH2').value;
+    const h3 = document.getElementById('cfgH3').value;
+
+    localStorage.setItem('rr_h1', h1);
+    localStorage.setItem('rr_h2', h2);
+    localStorage.setItem('rr_h3', h3);
+
+    document.getElementById('displayH1').textContent = h1;
+    document.getElementById('displayH2').textContent = h2;
+    document.getElementById('displayH3').textContent = h3;
+  }
+
+  function setFilter(filter) {
+    activeFilter = filter;
+    document.getElementById('pillPending').className = `pill ${filter === 'pending' ? 'active-pending' : ''}`;
+    document.getElementById('pillPaid').className = `pill ${filter === 'paid' ? 'active-paid' : ''}`;
+    document.getElementById('pillAll').className = `pill ${filter === 'all' ? 'active-all' : ''}`;
+    render();
+  }
+
+  function downloadTemplate() {
+    const template = "RollNo,Name\n101,Sample Student A\n102,Sample Student B\n103,Sample Student C\n";
+    const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `Template_${activeSem.replace(/\s+/g, '_')}.csv`;
+    a.click();
+  }
+
+  function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const list = loadList();
+      let importedCount = 0;
+
+      lines.forEach((line, index) => {
+        if (index === 0 && line.toLowerCase().includes('roll')) return;
+        const parts = line.split(',');
+        const roll = parts[0]?.trim();
+        const name = parts[1] ? parts.slice(1).join(',').trim().replace(/^["']|["']$/g, '') : '-';
+
+        if (roll && !list.some(s => s.roll.toLowerCase() === roll.toLowerCase())) {
+          list.push({ roll, name, paid: false, datePaid: null });
+          importedCount++;
+        }
+      });
+
+      saveList(list);
+      showMsg(`Imported ${importedCount} students into ${activeSem}.`, 'success');
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+
+  function clearSem() {
+    if (confirm(`Clear all enrolled students for ${activeSem}?`)) {
+      localStorage.removeItem(getKey());
+      showMsg(`Data cleared for ${activeSem}.`, 'warn');
+      render();
+    }
+  }
+
+  function exportCSV() {
+    const list = loadList();
+    let csv = "RollNo,Name,Status,PaymentDate\n";
+    list.forEach(s => {
+      csv += `"${s.roll}","${s.name}","${s.paid ? 'PAID' : 'PENDING'}","${s.datePaid || ''}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${activeSem}_Fee_Status.csv`;
+    a.click();
+  }
+
+  function render() {
+    const list = loadList();
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+
+    const paidList = list.filter(s => s.paid);
+    const pendingList = list.filter(s => !s.paid);
+
+    document.getElementById('cAll').textContent = list.length;
+    document.getElementById('cPaid').textContent = paidList.length;
+    document.getElementById('cPending').textContent = pendingList.length;
+
+    let displayList = list;
+    if (activeFilter === 'pending') displayList = pendingList;
+    if (activeFilter === 'paid') displayList = paidList;
+
+    // Set metadata for print layout
+    document.getElementById('printClass').textContent = `Class: ${activeSem}`;
+    document.getElementById('printFilter').textContent = `Filter: ${activeFilter === 'pending' ? 'Pending Dues' : (activeFilter === 'paid' ? 'Paid Only' : 'All')}`;
+    document.getElementById('printDate').textContent = `Date: ${new Date().toLocaleDateString('en-GB')}`;
+
+    if (displayList.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--slate-400); padding: 28px;">No records found matching current criteria.</td></tr>`;
+      return;
+    }
+
+    displayList.forEach((s, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="text-align: center; color: var(--slate-400);">${idx + 1}</td>
+        <td><strong style="color: var(--slate-900);">${s.roll}</strong></td>
+        <td>${s.name}</td>
+        <td>
+          <span class="status-tag ${s.paid ? 'paid' : 'pending'}">
+            ${s.paid ? '● Remitted' : '○ Pending'}
+          </span>
+        </td>
+        <td style="color: var(--slate-600);">${s.datePaid || '—'}</td>
+        <td style="text-align: center;" class="no-print">
+          <button class="btn btn-light" style="padding: 3px 8px; font-size: 11px;" onclick="toggleRow('${s.roll}')">
+            ${s.paid ? 'Undo' : 'Pay'}
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
+    `;
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+  }
+
+  loadHeadings();
+  render();
+</script>
+</body>
+</html>
