@@ -167,7 +167,6 @@
 <body>
 
 <div class="app-shell">
-  <!-- Login Screen -->
   <div id="loginScreen" class="login-wrapper">
     <h2>Rough Record Fee Portal</h2>
     <p>Sign in with your role password</p>
@@ -189,7 +188,6 @@
     <div id="loginError" style="color: var(--rose); font-size: 12px; margin-top: 8px; text-align: center; font-weight: 600;"></div>
   </div>
 
-  <!-- Main App Shell -->
   <div id="appContainer" style="display: none;">
     <header class="top-header no-print">
       <div>
@@ -215,7 +213,6 @@
         <div class="stat-tile"><span style="color: var(--rose);">Pending</span><strong id="cPending" style="color: var(--rose);">0</strong></div>
       </div>
 
-      <!-- Quick Roll Input -->
       <div class="card" style="border-top: 3px solid var(--primary);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <span style="font-weight: 700; font-size: 14px;">Mark Remitted Fee</span>
@@ -228,7 +225,6 @@
         <div id="statusAlert" style="min-height: 20px; font-size: 13px; font-weight: 600; margin-top: 6px;"></div>
       </div>
 
-      <!-- Admin Tools: Upload & Headings (Only visible to Admin) -->
       <div id="adminPanel" class="card" style="display: none; background: #fafafa;">
         <div style="font-weight: 700; font-size: 13.5px; margin-bottom: 8px;">Admin Controls (Roster & Print Settings)</div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
@@ -244,7 +240,6 @@
       </div>
     </div>
 
-    <!-- Roster Output -->
     <div class="card">
       <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
         <div style="display: flex; gap: 6px;">
@@ -284,14 +279,10 @@
 </div>
 
 <script>
-  // ==========================================
-  // 1. CONFIGURE YOUR APPS SCRIPT URL HERE
-  // ==========================================
-  const SCRIPT_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
+  // Google Apps Script Web App URL
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCja643w3g3iHBM3848TDLX_lsQoVkJXVhEVauK03hYIWJvdDHLBSNyBmyQGJ-83_Eow/exec";
 
-  // ==========================================
-  // 2. CONFIGURE CREDENTIALS
-  // ==========================================
+  // Login Passwords
   const CREDENTIALS = {
     admin: { pass: "admin123", label: "Administrator", canUpload: true, years: ["1st Year", "2nd Year", "3rd Year"] },
     hod: { pass: "hod123", label: "Head of Department", canUpload: false, years: ["1st Year", "2nd Year", "3rd Year"] },
@@ -435,7 +426,7 @@
         if (idx === 0 && line.toLowerCase().includes("roll")) return;
         const parts = line.split(",");
         const roll = parts[0]?.trim();
-        const name = parts.slice(1).join(",").trim().replace(/^["']|["']$/g, "") || "-";
+        const name = parts.slice(1).join(",").trim().replace(/^["']|["']\$/g, "") || "-";
         if (roll) students.push({ roll, name });
       });
 
