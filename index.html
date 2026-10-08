@@ -35,6 +35,7 @@
     }
     .app-shell { max-width: 960px; margin: 0 auto; }
     
+    /* Login Form Card */
     .login-wrapper {
       max-width: 400px;
       margin: 70px auto;
@@ -175,14 +176,14 @@
       <select id="roleSelect">
         <option value="admin">Administrator (Lecturer)</option>
         <option value="hod">HOD (Full View & Marking)</option>
-        <option value="tutor1">1st Year Tutor (Sem 1) — View Only</option>
-        <option value="tutor2">2nd Year Tutor (Sem 3) — View Only</option>
-        <option value="tutor3">3rd Year Tutor (Sem 5) — View Only</option>
+        <option value="tutor1">1st Year Tutor (Sem 1)</option>
+        <option value="tutor2">2nd Year Tutor (Sem 3)</option>
+        <option value="tutor3">3rd Year Tutor (Sem 5)</option>
       </select>
     </div>
     <div style="margin-bottom: 16px;">
       <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Password:</label>
-      <input type="password" id="rolePassword" placeholder="Enter password" onkeydown="if(event.key==='Enter') attemptLogin()">
+      <input type="password" id="rolePassword" placeholder="Enter password">
     </div>
     <button class="btn btn-primary" style="width: 100%; justify-content: center; padding: 11px;" onclick="attemptLogin()">Log In</button>
     <div id="loginError" style="color: var(--rose); font-size: 12px; margin-top: 8px; text-align: center; font-weight: 600;"></div>
@@ -196,6 +197,7 @@
         <div style="font-size: 12px; opacity: 0.9;" id="userBadge">Logged in</div>
       </div>
       <div style="display: flex; gap: 8px;">
+        <button class="btn btn-light" id="btnInstall" style="display: none;" onclick="triggerInstall()">📲 Install App</button>
         <button class="btn btn-light" onclick="syncData()">🔄 Sync Sheets</button>
         <button class="btn btn-light" onclick="logout()">Log Out</button>
       </div>
@@ -214,8 +216,8 @@
         <div class="stat-tile"><span style="color: var(--rose);">Pending</span><strong id="cPending" style="color: var(--rose);">0</strong></div>
       </div>
 
-      <!-- Quick Roll Input (Admin & HOD only) -->
-      <div id="markingPanel" class="card" style="border-top: 3px solid var(--primary);">
+      <!-- Quick Roll Input -->
+      <div class="card" style="border-top: 3px solid var(--primary);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <span style="font-weight: 700; font-size: 14px;">Mark Remitted Fee</span>
           <span style="font-size: 12px; color: var(--slate-600);">Class: <b id="activeClassLabel" style="color: var(--primary);">1st Year</b></span>
@@ -227,40 +229,18 @@
         <div id="statusAlert" style="min-height: 20px; font-size: 13px; font-weight: 600; margin-top: 6px;"></div>
       </div>
 
-      <!-- Admin Tools (Uploads, Headings & Password Reset) -->
+      <!-- Admin Tools: Upload & Headings (Only visible to Admin) -->
       <div id="adminPanel" class="card" style="display: none; background: #fafafa;">
-        <div style="font-weight: 700; font-size: 13.5px; margin-bottom: 12px;">Admin Controls</div>
-        
-        <!-- Roster Upload -->
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+        <div style="font-weight: 700; font-size: 13.5px; margin-bottom: 8px;">Admin Controls (Roster & Print Settings)</div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
           <input type="file" id="fileUpload" accept=".csv" style="display: none;" onchange="handleCSV(event)">
           <button class="btn btn-primary" onclick="document.getElementById('fileUpload').click()">📁 Upload Year CSV to Google Sheet</button>
           <button class="btn btn-light" onclick="downloadTemplate()">⬇ CSV Template</button>
         </div>
-
-        <!-- Custom Print Headings -->
-        <div style="font-size: 12px; font-weight: 600; color: var(--slate-600); margin-bottom: 4px;">Print Headings:</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
           <input type="text" id="cfgH1" placeholder="College Name" onchange="pushHeadings()">
           <input type="text" id="cfgH2" placeholder="Department" onchange="pushHeadings()">
           <input type="text" id="cfgH3" placeholder="Work Title" onchange="pushHeadings()">
-        </div>
-
-        <!-- Reset Password Section -->
-        <div style="border-top: 1px solid var(--slate-200); padding-top: 12px;">
-          <div style="font-size: 12px; font-weight: 700; color: var(--slate-800); margin-bottom: 6px;">🔐 Reset Role Passwords</div>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-            <select id="resetRoleTarget" style="flex: 1; min-width: 180px;">
-              <option value="admin">Administrator (Yourself)</option>
-              <option value="hod">HOD</option>
-              <option value="tutor1">1st Year Tutor</option>
-              <option value="tutor2">2nd Year Tutor</option>
-              <option value="tutor3">3rd Year Tutor</option>
-            </select>
-            <input type="text" id="newPassInput" placeholder="New Password" style="flex: 1; min-width: 180px;">
-            <button class="btn btn-primary" onclick="submitPasswordReset()">Update Password</button>
-          </div>
-          <div id="pwResetMsg" style="font-size: 12px; margin-top: 6px; font-weight: 600;"></div>
         </div>
       </div>
     </div>
@@ -295,7 +275,7 @@
             <th>Name</th>
             <th style="width: 100px;">Status</th>
             <th style="width: 120px;">Date</th>
-            <th id="thAction" style="width: 80px;" class="no-print">Action</th>
+            <th style="width: 80px;" class="no-print">Action</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -305,14 +285,20 @@
 </div>
 
 <script>
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCja643w3g3iHBM3848TDLX_lsQoVkJXVhEVauK03hYIWJvdDHLBSNyBmyQGJ-83_Eow/exec";
+  // ==========================================
+  // 1. CONFIGURE YOUR APPS SCRIPT URL HERE
+  // ==========================================
+  const SCRIPT_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
 
-  const ROLES_CONFIG = {
-    admin: { label: "Administrator", canUpload: true, canMark: true, years: ["1st Year", "2nd Year", "3rd Year"] },
-    hod: { label: "Head of Department", canUpload: false, canMark: true, years: ["1st Year", "2nd Year", "3rd Year"] },
-    tutor1: { label: "Tutor (1st Year) — View Only", canUpload: false, canMark: false, years: ["1st Year"] },
-    tutor2: { label: "Tutor (2nd Year) — View Only", canUpload: false, canMark: false, years: ["2nd Year"] },
-    tutor3: { label: "Tutor (3rd Year) — View Only", canUpload: false, canMark: false, years: ["3rd Year"] }
+  // ==========================================
+  // 2. CONFIGURE CREDENTIALS
+  // ==========================================
+  const CREDENTIALS = {
+    admin: { pass: "admin123", label: "Administrator", canUpload: true, years: ["1st Year", "2nd Year", "3rd Year"] },
+    hod: { pass: "hod123", label: "Head of Department", canUpload: false, years: ["1st Year", "2nd Year", "3rd Year"] },
+    tutor1: { pass: "tutor1", label: "Tutor (1st Year)", canUpload: false, years: ["1st Year"] },
+    tutor2: { pass: "tutor2", label: "Tutor (2nd Year)", canUpload: false, years: ["2nd Year"] },
+    tutor3: { pass: "tutor3", label: "Tutor (3rd Year)", canUpload: false, years: ["3rd Year"] }
   };
 
   let currentUser = null;
@@ -320,71 +306,23 @@
   let activeFilter = "pending";
   let currentStudents = [];
 
-  async function attemptLogin() {
+  function attemptLogin() {
     const role = document.getElementById("roleSelect").value;
     const pass = document.getElementById("rolePassword").value;
-    const errBox = document.getElementById("loginError");
-    errBox.textContent = "Verifying...";
-    errBox.style.color = "var(--primary)";
+    const userConf = CREDENTIALS[role];
 
-    try {
-      const res = await fetch(`${SCRIPT_URL}?action=fetchAuth`);
-      const data = await res.json();
-      
-      if (data.status === "success" && data.passwords[role] === pass) {
-        currentUser = ROLES_CONFIG[role];
-        document.getElementById("loginScreen").style.display = "none";
-        document.getElementById("appContainer").style.display = "block";
-        document.getElementById("userBadge").textContent = `Logged in as: ${currentUser.label}`;
-        
-        document.getElementById("markingPanel").style.display = currentUser.canMark ? "block" : "none";
-        document.getElementById("thAction").style.display = currentUser.canMark ? "" : "none";
-        document.getElementById("adminPanel").style.display = currentUser.canUpload ? "block" : "none";
+    if (userConf && userConf.pass === pass) {
+      currentUser = userConf;
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("appContainer").style.display = "block";
+      document.getElementById("userBadge").textContent = `Logged in as: ${userConf.label}`;
+      document.getElementById("adminPanel").style.display = userConf.canUpload ? "block" : "none";
 
-        activeYear = currentUser.years[0];
-        setupTabs();
-        syncData();
-      } else {
-        errBox.textContent = "Incorrect password.";
-        errBox.style.color = "var(--rose)";
-      }
-    } catch (e) {
-      errBox.textContent = "Error connecting to authentication service.";
-      errBox.style.color = "var(--rose)";
-    }
-  }
-
-  async function submitPasswordReset() {
-    const targetRole = document.getElementById("resetRoleTarget").value;
-    const newPassword = document.getElementById("newPassInput").value.trim();
-    const msgBox = document.getElementById("pwResetMsg");
-
-    if (!newPassword) {
-      msgBox.textContent = "Please enter a valid new password.";
-      msgBox.style.color = "var(--rose)";
-      return;
-    }
-
-    msgBox.textContent = "Updating password...";
-    msgBox.style.color = "var(--primary)";
-
-    try {
-      const res = await fetch(SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "resetPassword", targetRole: targetRole, newPassword: newPassword })
-      });
-      const data = await res.json();
-      if (data.status === "success") {
-        msgBox.textContent = `Password for ${targetRole} updated successfully!`;
-        msgBox.style.color = "var(--emerald)";
-        document.getElementById("newPassInput").value = "";
-      } else {
-        msgBox.textContent = "Failed to update password.";
-        msgBox.style.color = "var(--rose)";
-      }
-    } catch (e) {
-      msgBox.textContent = "Error communicating with server.";
-      msgBox.style.color = "var(--rose)";
+      activeYear = userConf.years[0];
+      setupTabs();
+      syncData();
+    } else {
+      document.getElementById("loginError").textContent = "Incorrect password.";
     }
   }
 
@@ -419,10 +357,8 @@
 
   async function syncData() {
     const alertBox = document.getElementById("statusAlert");
-    if (alertBox) {
-      alertBox.textContent = "Connecting to Google Sheet...";
-      alertBox.style.color = "var(--primary)";
-    }
+    alertBox.textContent = "Connecting to Google Sheet...";
+    alertBox.style.color = "var(--primary)";
 
     try {
       const res = await fetch(`${SCRIPT_URL}?action=fetchData&year=${encodeURIComponent(activeYear)}`);
@@ -430,33 +366,25 @@
       if (data.status === "success") {
         currentStudents = data.students;
 
-        if (currentUser.canUpload) {
-          document.getElementById("cfgH1").value = data.headings.h1;
-          document.getElementById("cfgH2").value = data.headings.h2;
-          document.getElementById("cfgH3").value = data.headings.h3;
-        }
+        document.getElementById("cfgH1").value = data.headings.h1;
+        document.getElementById("cfgH2").value = data.headings.h2;
+        document.getElementById("cfgH3").value = data.headings.h3;
 
         document.getElementById("pH1").textContent = data.headings.h1;
         document.getElementById("pH2").textContent = data.headings.h2;
         document.getElementById("pH3").textContent = data.headings.h3;
 
-        if (alertBox) {
-          alertBox.textContent = "Google Sheet synchronized.";
-          alertBox.style.color = "var(--emerald)";
-        }
+        alertBox.textContent = "Google Sheet synchronized.";
+        alertBox.style.color = "var(--emerald)";
         render();
       }
     } catch (e) {
-      if (alertBox) {
-        alertBox.textContent = "Error connecting to Google Sheets.";
-        alertBox.style.color = "var(--rose)";
-      }
+      alertBox.textContent = "Error connecting to Google Sheets. Verify Web App deployment.";
+      alertBox.style.color = "var(--rose)";
     }
   }
 
   async function submitPay() {
-    if (!currentUser.canMark) return;
-
     const input = document.getElementById("rollInput");
     const roll = input.value.trim();
     if (!roll) return;
@@ -488,8 +416,6 @@
   }
 
   async function toggleStatus(roll) {
-    if (!currentUser.canMark) return;
-
     await fetch(SCRIPT_URL, {
       method: "POST",
       body: JSON.stringify({ action: "markPaid", year: activeYear, roll: roll })
@@ -498,7 +424,6 @@
   }
 
   async function handleCSV(e) {
-    if (!currentUser.canUpload) return;
     const file = e.target.files[0];
     if (!file) return;
 
@@ -511,7 +436,7 @@
         if (idx === 0 && line.toLowerCase().includes("roll")) return;
         const parts = line.split(",");
         const roll = parts[0]?.trim();
-        const name = parts.slice(1).join(",").trim().replace(/^["']|["']\$/g, "") || "-";
+        const name = parts.slice(1).join(",").trim().replace(/^["']|["']$/g, "") || "-";
         if (roll) students.push({ roll, name });
       });
 
@@ -528,7 +453,6 @@
   }
 
   async function pushHeadings() {
-    if (!currentUser.canUpload) return;
     const h1 = document.getElementById("cfgH1").value;
     const h2 = document.getElementById("cfgH2").value;
     const h3 = document.getElementById("cfgH3").value;
@@ -574,34 +498,55 @@
     document.getElementById("pDate").textContent = `Date: ${new Date().toLocaleDateString('en-GB')}`;
 
     if (displayList.length === 0) {
-      const colSpan = currentUser.canMark ? 6 : 5;
-      tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center; padding: 24px; color: #94a3b8;">No records match the current criteria.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 24px; color: #94a3b8;">No records match the current criteria.</td></tr>`;
       return;
     }
 
     displayList.forEach((s, idx) => {
       const tr = document.createElement("tr");
-      let actionCell = "";
-      if (currentUser.canMark) {
-        actionCell = `
-          <td class="no-print">
-            <button class="btn btn-light" style="padding: 2px 8px; font-size: 11px;" onclick="toggleStatus('${s.roll}')">
-              ${s.paid ? 'Undo' : 'Pay'}
-            </button>
-          </td>
-        `;
-      }
-
       tr.innerHTML = `
         <td>${idx + 1}</td>
         <td><strong>${s.roll}</strong></td>
         <td>${s.name}</td>
         <td><span class="status-badge ${s.paid ? 'paid' : 'pending'}">${s.paid ? 'PAID' : 'PENDING'}</span></td>
         <td>${s.datePaid || '—'}</td>
-        ${actionCell}
+        <td class="no-print">
+          <button class="btn btn-light" style="padding: 2px 8px; font-size: 11px;" onclick="toggleStatus('${s.roll}')">
+            ${s.paid ? 'Undo' : 'Pay'}
+          </button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
+  }
+
+  // ==========================================
+  // 3. PWA INSTALL & SERVICE WORKER LOGIC
+  // ==========================================
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('Service Worker Registered'))
+      .catch(err => console.error('SW Error:', err));
+  }
+
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const installBtn = document.getElementById('btnInstall');
+    if (installBtn) installBtn.style.display = 'inline-flex';
+  });
+
+  function triggerInstall() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          document.getElementById('btnInstall').style.display = 'none';
+        }
+        deferredPrompt = null;
+      });
+    }
   }
 </script>
 </body>
