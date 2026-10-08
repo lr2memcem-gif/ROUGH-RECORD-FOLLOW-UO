@@ -203,7 +203,7 @@
         </div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn btn-light" id="btnInstall" style="display: none;" onclick="triggerInstall()">📲 Install App</button>
+        <button class="btn btn-light" id="btnInstall" onclick="triggerInstall()">📲 Install App</button>
         <button class="btn btn-light" onclick="syncData()">🔄 Sync Sheets</button>
         <button class="btn btn-light" onclick="logout()">Log Out</button>
       </div>
@@ -293,12 +293,12 @@
 
 <script>
   // ========================================================
-  // 1. CONFIGURE YOUR APPS SCRIPT URL HERE
+  // 1. APPS SCRIPT URL
   // ========================================================
-  const SCRIPT_URL = "INSERT_YOUR_APPS_SCRIPT_URL_HERE";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzCja643w3g3iHBM3848TDLX_lsQoVkJXVhEVauK03hYIWJvdDHLBSNyBmyQGJ-83_Eow/exec";
 
   // ========================================================
-  // 2. CONFIGURE CREDENTIALS
+  // 2. CONFIGURATION CREDENTIALS
   // ========================================================
   const CREDENTIALS = {
     admin: { pass: "admin123", label: "Administrator", canUpload: true, years: ["1st Year", "2nd Year", "3rd Year"] },
@@ -531,7 +531,7 @@
   // 3. PWA SERVICE WORKER & APP INSTALL TRIGGER
   // ========================================================
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
+    navigator.serviceWorker.register('sw.js')
       .then(() => console.log('SW Registered'))
       .catch(err => console.error('SW Error:', err));
   }
@@ -540,19 +540,17 @@
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    const installBtn = document.getElementById('btnInstall');
-    if (installBtn) installBtn.style.display = 'inline-flex';
   });
 
   function triggerInstall() {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       deferredPrompt.userChoice.then((choiceResult) => {
-        if (choiceResult.outcome === 'accepted') {
-          document.getElementById('btnInstall').style.display = 'none';
-        }
         deferredPrompt = null;
       });
+    } else {
+      // Fallback guide when browser suppresses or already consumed the prompt event
+      alert("To install: Tap your browser's three-dot menu (⋮) at top right and choose 'Add to Home screen' or 'Install app'.");
     }
   }
 </script>
