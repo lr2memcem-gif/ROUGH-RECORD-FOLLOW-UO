@@ -1,23 +1,18 @@
-const CACHE_NAME = 'rough-record-v2';
+const CACHE_NAME = 'rough-record-nologo-v1';
 
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json',
-  './logo.png'
+  './manifest.json'
 ];
 
-// Install Event: Cache app shell assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
   self.skipWaiting();
 });
 
-// Activate Event: Clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -33,33 +28,24 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event: Network-first for dynamic API/data, cache-first for static UI assets
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Bypass cache completely for Google Apps Script requests
+  // Bypass cache for Google Apps Script database calls
   if (url.origin.includes('script.google.com') || url.origin.includes('googleusercontent.com')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // Stale-while-revalidate for local assets (HTML, CSS, JS, Images)
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+    caches.match(event.request).then((cached) => {
+      return cached || fetch(event.request).then((response) => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
-        return networkResponse;
-      }).catch(() => {
-        // Return cached version if offline
-        return cachedResponse;
+        return response;
       });
-
-      return cachedResponse || fetchPromise;
-    })
+    }).catch(() => caches.match('./index.html'))
   );
 });
