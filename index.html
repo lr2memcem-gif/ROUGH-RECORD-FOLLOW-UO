@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="logo.png" type="image/png">
   <meta name="theme-color" content="#1e3a8a">
   <title>Rough Record Fee Portal</title>
   <style>
@@ -35,7 +36,7 @@
     }
     .app-shell { max-width: 960px; margin: 0 auto; }
     
-    /* Login Form Card */
+    /* Login Screen */
     .login-wrapper {
       max-width: 400px;
       margin: 70px auto;
@@ -44,9 +45,10 @@
       border-radius: var(--radius-md);
       box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08);
       border: 1px solid var(--slate-200);
+      text-align: center;
     }
-    .login-wrapper h2 { margin: 0 0 6px 0; text-align: center; font-size: 20px; }
-    .login-wrapper p { margin: 0 0 20px 0; color: var(--slate-600); font-size: 13px; text-align: center; }
+    .login-wrapper h2 { margin: 10px 0 6px 0; font-size: 20px; }
+    .login-wrapper p { margin: 0 0 20px 0; color: var(--slate-600); font-size: 13px; }
 
     .card {
       background: white;
@@ -59,7 +61,7 @@
     .top-header {
       background: linear-gradient(135deg, #1e3a8a, #2563eb);
       color: white;
-      padding: 16px 20px;
+      padding: 14px 20px;
       border-radius: var(--radius-md);
       margin-bottom: 14px;
       display: flex;
@@ -151,7 +153,7 @@
     .pending { background: var(--rose-light); color: var(--rose); border: 1px solid var(--rose-border); }
 
     .print-doc-header { display: none; text-align: center; margin-bottom: 14px; border-bottom: 2px solid #000; padding-bottom: 8px; }
-    .print-doc-header h2 { margin: 0; font-size: 17px; text-transform: uppercase; }
+    .print-doc-header h2 { margin: 4px 0 0 0; font-size: 17px; text-transform: uppercase; }
     .print-doc-header h4 { margin: 2px 0; font-size: 13px; color: var(--slate-600); }
     .print-doc-header h5 { margin: 2px 0; font-size: 13px; }
 
@@ -169,9 +171,10 @@
 <div class="app-shell">
   <!-- Login Screen -->
   <div id="loginScreen" class="login-wrapper">
+    <img src="logo.png" alt="Logo" onerror="this.style.display='none'" style="height: 60px; width: 60px; object-fit: contain; margin: 0 auto 4px auto;">
     <h2>Rough Record Fee Portal</h2>
-    <p>Sign in with your role password</p>
-    <div style="margin-bottom: 12px;">
+    <p>Sign in with your assigned role</p>
+    <div style="margin-bottom: 12px; text-align: left;">
       <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Select Role:</label>
       <select id="roleSelect">
         <option value="admin">Administrator (Lecturer)</option>
@@ -181,7 +184,7 @@
         <option value="tutor3">3rd Year Tutor (Sem 5)</option>
       </select>
     </div>
-    <div style="margin-bottom: 16px;">
+    <div style="margin-bottom: 16px; text-align: left;">
       <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Password:</label>
       <input type="password" id="rolePassword" placeholder="Enter password">
     </div>
@@ -192,11 +195,14 @@
   <!-- Main App Shell -->
   <div id="appContainer" style="display: none;">
     <header class="top-header no-print">
-      <div>
-        <h1 style="margin: 0; font-size: 18px;">Rough Record Fee Tracker</h1>
-        <div style="font-size: 12px; opacity: 0.9;" id="userBadge">Logged in</div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <img src="logo.png" alt="Logo" onerror="this.style.display='none'" style="height: 44px; width: 44px; object-fit: contain; background: white; border-radius: 8px; padding: 2px;">
+        <div>
+          <h1 style="margin: 0; font-size: 18px;">Rough Record Fee Tracker</h1>
+          <div style="font-size: 12px; opacity: 0.9;" id="userBadge">Logged in</div>
+        </div>
       </div>
-      <div style="display: flex; gap: 8px;">
+      <div style="display: flex; gap: 8px; align-items: center;">
         <button class="btn btn-light" id="btnInstall" style="display: none;" onclick="triggerInstall()">📲 Install App</button>
         <button class="btn btn-light" onclick="syncData()">🔄 Sync Sheets</button>
         <button class="btn btn-light" onclick="logout()">Log Out</button>
@@ -257,6 +263,7 @@
       </div>
 
       <div class="print-doc-header">
+        <img src="logo.png" alt="Logo" onerror="this.style.display='none'" style="height: 50px; margin-bottom: 4px; object-fit: contain;">
         <h2 id="pH1">GOVERNMENT POLYTECHNIC COLLEGE</h2>
         <h4 id="pH2">DEPARTMENT OF MECHANICAL ENGINEERING</h4>
         <h5 id="pH3">ROUGH RECORD FEE REMITTANCE</h5>
@@ -285,14 +292,14 @@
 </div>
 
 <script>
-  // ==========================================
+  // ========================================================
   // 1. CONFIGURE YOUR APPS SCRIPT URL HERE
-  // ==========================================
-  const SCRIPT_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
+  // ========================================================
+  const SCRIPT_URL = "INSERT_YOUR_APPS_SCRIPT_URL_HERE";
 
-  // ==========================================
+  // ========================================================
   // 2. CONFIGURE CREDENTIALS
-  // ==========================================
+  // ========================================================
   const CREDENTIALS = {
     admin: { pass: "admin123", label: "Administrator", canUpload: true, years: ["1st Year", "2nd Year", "3rd Year"] },
     hod: { pass: "hod123", label: "Head of Department", canUpload: false, years: ["1st Year", "2nd Year", "3rd Year"] },
@@ -520,12 +527,12 @@
     });
   }
 
-  // ==========================================
-  // 3. PWA INSTALL & SERVICE WORKER LOGIC
-  // ==========================================
+  // ========================================================
+  // 3. PWA SERVICE WORKER & APP INSTALL TRIGGER
+  // ========================================================
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('Service Worker Registered'))
+      .then(() => console.log('SW Registered'))
       .catch(err => console.error('SW Error:', err));
   }
 
