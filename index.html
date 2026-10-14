@@ -1,560 +1,1222 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Attendance Book System</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Department of Mechanical Engineering | MCEM Record Certification</title>
+  
+  <!-- PWA Manifest & Mobile Config -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#080e1e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ME Records" />
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2092/2092063.png" />
+
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- SheetJS for Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- jsPDF & AutoTable for PDF Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
   <style>
-    @page { 
-      size: A4 portrait; 
-      margin: 8mm; 
+    .blueprint-grid {
+      background-color: #080e1e;
+      background-image: 
+        linear-gradient(to right, rgba(245, 158, 11, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(245, 158, 11, 0.05) 1px, transparent 1px);
+      background-size: 24px 24px;
     }
-    @media print {
-      body { 
-        margin: 0; 
-        padding: 0; 
-        background: #fff; 
-      }
-      .no-print { 
-        display: none !important; 
-      }
-      .a4-page {
-        border: none !important;
-        box-shadow: none !important;
-        width: 100% !important;
-        height: 280mm !important;
-        page-break-after: always !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-      }
-      .a4-page:last-child { 
-        page-break-after: avoid !important; 
-      }
+    .gear-spin {
+      animation: spin 16s linear infinite;
+    }
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+    /* Fixed/Sticky Table Header Style */
+    .table-scroll-container {
+      max-height: 70vh;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+    thead th.sticky-th {
+      position: sticky;
+      top: 0;
+      z-index: 15;
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-900 font-sans">
+<body class="bg-slate-100 text-slate-800 min-h-screen font-sans flex flex-col antialiased">
 
-  <!-- Top Navigation Header -->
-  <header class="no-print bg-slate-900 text-white p-4 shadow">
-    <div class="max-w-4xl mx-auto flex flex-wrap justify-between items-center gap-2">
-      <h1 class="font-bold text-lg">College Register Portal</h1>
+  <!-- Department Header -->
+  <header class="blueprint-grid text-white border-b-4 border-amber-500 shadow-xl sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
+      
+      <!-- Department & MCEM Branding -->
+      <div class="flex items-center space-x-3.5">
+        <div class="relative w-11 h-11 bg-amber-500/10 rounded-xl border border-amber-400/40 flex items-center justify-center text-amber-400">
+          <i class="ph-bold ph-gear gear-spin text-2xl"></i>
+          <i class="ph-bold ph-wrench text-[10px] absolute"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="bg-amber-500 text-slate-950 text-[10px] uppercase font-mono px-2 py-0.5 rounded font-black tracking-widest">MCEM</span>
+            <span class="text-[11px] text-amber-300 font-mono tracking-wider font-semibold">LAB CERTIFICATION PORTAL</span>
+          </div>
+          <h1 class="text-base sm:text-lg font-black uppercase tracking-tight text-white flex items-center gap-2">
+            DEPARTMENT OF MECHANICAL ENGINEERING
+          </h1>
+        </div>
+      </div>
+
+      <!-- User Session & Navigation -->
       <div class="flex items-center gap-2">
-        <button onclick="showTab('mark')" class="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded text-xs font-semibold">Mark Attendance</button>
-        <button onclick="showTab('register')" class="bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-xs font-semibold">Register Book</button>
-        <a href="admin.html" class="bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded text-xs font-semibold inline-block">Admin Panel</a>
-        <button onclick="handleLogout()" class="bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded text-xs font-semibold">Logout</button>
+        <button id="installAppBtn" onclick="triggerInstall()" class="hidden px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 shadow transition">
+          <i class="ph-bold ph-download-simple text-sm"></i> Install
+        </button>
+
+        <div id="session-info" class="hidden flex items-center gap-1.5 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-700 text-xs font-mono">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="active-user-name" class="font-bold text-amber-400">User</span>
+          <button onclick="logoutUser()" class="ml-1 text-slate-400 hover:text-rose-400 transition" title="Logout">
+            <i class="ph-bold ph-sign-out text-sm"></i>
+          </button>
+        </div>
+
+        <nav class="flex bg-slate-900/90 p-1 rounded-xl border border-slate-700 text-xs font-semibold">
+          <button onclick="switchView('staff')" id="nav-staff" class="px-3 py-1.5 rounded-lg transition-all bg-amber-500 text-slate-950 font-bold shadow flex items-center gap-1">
+            <i class="ph-bold ph-lock-key"></i> Staff
+          </button>
+          <button onclick="switchView('admin')" id="nav-admin" class="hidden px-3 py-1.5 rounded-lg transition-all text-slate-300 hover:text-white flex items-center gap-1">
+            <i class="ph-bold ph-sliders"></i> Admin
+          </button>
+          <button onclick="switchView('student')" id="nav-student" class="px-3 py-1.5 rounded-lg transition-all text-slate-300 hover:text-white flex items-center gap-1">
+            <i class="ph-bold ph-student"></i> Student
+          </button>
+        </nav>
       </div>
     </div>
   </header>
 
-  <!-- TAB 1: MARK ATTENDANCE (STAFF / HOD) -->
-  <main id="tab-mark" class="no-print max-w-xl mx-auto p-4 mt-2">
-    <div class="bg-white p-5 rounded-lg shadow border border-slate-200">
-      <h2 class="text-base font-bold border-b pb-2 mb-4 text-slate-800">Mark Period Attendance</h2>
-      
-      <div class="space-y-3">
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex-1 w-full space-y-5">
+
+    <!-- ============================================================ -->
+    <!-- LOGIN SCREEN -->
+    <!-- ============================================================ -->
+    <div id="login-modal" class="max-w-md mx-auto bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm text-center">
+      <div class="w-14 h-14 bg-slate-900 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-slate-800">
+        <i class="ph-bold ph-user-circle-gear text-3xl"></i>
+      </div>
+      <span class="text-[11px] font-mono font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full uppercase">MCEM Mechanical Dept</span>
+      <h2 class="text-xl font-black text-slate-900 uppercase tracking-tight mt-2">Faculty & HOD Login</h2>
+      <p class="text-xs text-slate-500 mt-1 font-mono">Select your role to access and record marks</p>
+
+      <form onsubmit="handleLogin(event)" class="mt-6 space-y-4 text-left">
         <div>
-          <label class="block text-xs font-bold text-slate-600">Select Class</label>
-          <select id="mark-class" class="w-full border p-2 rounded text-sm mt-1" onchange="onClassChange()">
-            <option value="">-- Choose Class --</option>
+          <label class="block text-xs font-bold font-mono text-slate-600 uppercase mb-1">Select Role / Faculty</label>
+          <select id="loginStaffSelect" required class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold outline-none focus:ring-2 focus:ring-amber-500 bg-white">
+            <option value="">-- Choose Name --</option>
+            <optgroup label="Department Head">
+              <option value="HOD VIPIN VP">HOD VIPIN VP (Final HoS Certification)</option>
+            </optgroup>
+            <optgroup label="Teaching Faculty">
+              <option value="Maneesh T">Maneesh T</option>
+              <option value="Junaid AP">Junaid AP</option>
+              <option value="Ashique NK">Ashique NK</option>
+              <option value="Sujith N">Sujith N</option>
+              <option value="Shahinsha">Shahinsha</option>
+              <option value="Hiba Sherin">Hiba Sherin</option>
+              <option value="Krishnadas PE">Krishnadas PE</option>
+            </optgroup>
+            <optgroup label="Administration / Roster Management">
+              <option value="Admin">Admin (Add / Edit Student Lists)</option>
+            </optgroup>
           </select>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-600">Date</label>
-            <input type="date" id="mark-date" class="w-full border p-2 rounded text-sm mt-1">
+        <div>
+          <label class="block text-xs font-bold font-mono text-slate-600 uppercase mb-1">Password</label>
+          <input type="password" id="loginPin" placeholder="Enter Password" required
+            class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm outline-none focus:ring-2 focus:ring-amber-500 font-mono tracking-wider"/>
+          <p class="text-[10px] text-slate-400 mt-1 font-mono">Format: <span class="font-bold text-slate-600">me@name</span> (e.g. <span class="font-semibold text-slate-600">me@maneesh</span>, <span class="font-semibold text-slate-600">me@hodvipin</span>, <span class="font-semibold text-slate-600">me@admin</span>)</p>
+        </div>
+
+        <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold py-3 rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-sm">
+          <i class="ph-bold ph-sign-in"></i> Sign In to Dashboard
+        </button>
+      </form>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STAFF / HOD DASHBOARD -->
+    <!-- ============================================================ -->
+    <div id="staff-dashboard" class="hidden space-y-4">
+
+      <!-- Batch Bar & PDF Tools -->
+      <div class="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-mono font-bold text-slate-400 uppercase">Batch:</span>
+          <button onclick="setYear('2nd')" id="btn-yr-2nd" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition bg-amber-500 text-slate-950 shadow-sm">
+            2nd Year ME
+          </button>
+          <button onclick="setYear('3rd')" id="btn-yr-3rd" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:bg-slate-100">
+            3rd Year ME
+          </button>
+        </div>
+
+        <div id="staff-scope-notice" class="text-xs font-mono bg-amber-50 text-amber-900 px-3 py-1.5 rounded-xl border border-amber-200 font-bold">
+          Showing assigned subjects
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- PDF Dropdown -->
+          <div class="relative inline-block text-left">
+            <button onclick="toggleExportMenu()" class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-xs font-semibold text-white flex items-center gap-1.5 shadow-sm transition">
+              <i class="ph-bold ph-file-pdf"></i> Pending List (PDF) <i class="ph-bold ph-caret-down text-[10px]"></i>
+            </button>
+            <div id="exportMenuDropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-1 text-xs">
+              <button onclick="exportPendingPDF('subject')" class="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 font-semibold flex items-center gap-2">
+                <i class="ph-bold ph-user-check text-amber-600"></i> Subject-Wise Pending PDF
+              </button>
+              <button onclick="exportPendingPDF('whole')" class="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 font-semibold flex items-center gap-2 border-t border-slate-100">
+                <i class="ph-bold ph-files text-indigo-600"></i> Entire Batch Pending PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rapid Roll Subject-Wise Entry -->
+      <div class="bg-slate-900 text-white p-3.5 rounded-2xl shadow-sm border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 w-full md:w-auto">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-400/30 flex items-center justify-center text-amber-400 text-lg shrink-0">
+            <i class="ph-bold ph-lightning"></i>
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600">Hour / Period</label>
-            <select id="mark-period" class="w-full border p-2 rounded text-sm mt-1">
-              <option value="1">Hour I</option>
-              <option value="2">Hour II</option>
-              <option value="3">Hour III</option>
-              <option value="4">Hour IV</option>
-              <option value="5">Hour V</option>
-              <option value="6">Hour VI</option>
-            </select>
+            <h3 class="font-bold text-xs sm:text-sm text-white">Rapid Roll Certification</h3>
+            <p class="text-[10px] text-slate-400 font-mono">Select subject and mark roll number</p>
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-600">Teacher Name</label>
-            <input type="text" id="mark-teacher" placeholder="e.g. Maneesh T" class="w-full border p-2 rounded text-sm mt-1">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600">Subject</label>
-            <select id="mark-subject" class="w-full border p-2 rounded text-sm mt-1">
-              <option value="">-- Select Subject --</option>
-            </select>
-          </div>
+        <form onsubmit="handleQuickCertify(event)" class="flex flex-wrap gap-2 w-full md:w-auto items-center justify-start md:justify-end">
+          <select id="rapidSubjectSelect" class="px-2.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-amber-300 text-xs font-mono font-bold outline-none focus:border-amber-400 max-w-full">
+            <!-- Dynamic dropdown options -->
+          </select>
+          <input type="text" id="quickRollInput" placeholder="Roll No" required
+            class="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 text-xs font-mono uppercase outline-none focus:border-amber-400 w-28 sm:w-32"/>
+          <button type="submit" name="action" value="mark" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs transition">
+            ✓ Certify
+          </button>
+          <button type="submit" name="action" value="unmark" class="bg-rose-600/80 hover:bg-rose-600 text-white font-bold px-2.5 py-2 rounded-xl text-xs transition" title="Undo / unmark">
+            ✕ Undo
+          </button>
+        </form>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="flex justify-between items-center gap-2">
+        <div class="relative w-64 sm:w-80">
+          <i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
+          <input type="text" id="filterInput" oninput="renderTable()" placeholder="Search roll no or name..."
+            class="w-full pl-9 pr-3 py-1.5 border rounded-xl text-xs border-slate-200 outline-none focus:ring-2 focus:ring-amber-500 bg-white font-mono"/>
+        </div>
+        <div class="flex items-center gap-1 text-xs font-semibold text-slate-600">
+          <select id="certFilter" onchange="renderTable()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-xs outline-none">
+            <option value="ALL">All Students</option>
+            <option value="PENDING_ONLY">Pending Only</option>
+            <option value="COMPLETED_ONLY">Completed Only</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Scrollable Records Table with FROZEN / STICKY HEADER -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="table-scroll-container">
+          <table class="w-full text-left text-xs sm:text-sm border-collapse">
+            <thead class="bg-slate-900 text-white uppercase text-[11px] font-mono tracking-wider">
+              <tr id="table-headers">
+                <!-- Injected dynamically with sticky-th class -->
+              </tr>
+            </thead>
+            <tbody id="studentTableBody" class="divide-y divide-slate-100">
+              <!-- Student rows rendered here -->
+            </tbody>
+          </table>
+        </div>
+        <div id="noDataRow" class="hidden p-8 text-center text-slate-400 text-xs font-mono">
+          No students loaded. Switch to the Admin profile to upload or add students.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- ADMIN CONSOLE (Roster Management) -->
+    <!-- ============================================================ -->
+    <div id="admin-dashboard" class="hidden space-y-6">
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-3">
+        <div>
+          <span class="text-[10px] font-mono font-bold uppercase bg-slate-900 text-amber-400 px-2 py-0.5 rounded">Roster Management</span>
+          <h2 class="text-lg font-black text-slate-900 mt-1 uppercase">Department Admin Console</h2>
+          <p class="text-xs text-slate-500 font-mono">Upload Excel files, add new students, edit roll numbers or names</p>
         </div>
 
-        <!-- QUICK ROLL NO ENTRY -->
-        <div class="pt-2 border-t">
-          <label class="block text-xs font-bold text-slate-700 mb-1">Quick Absentee Entry (Roll Numbers):</label>
-          <div class="flex gap-2">
-            <input type="text" id="quick-roll-input" placeholder="e.g. 1, 34, 56, 72" class="flex-1 border p-2 rounded text-xs outline-none focus:ring-1 focus:ring-blue-500 font-mono" onkeydown="handleQuickRollKey(event)">
-            <button type="button" onclick="applyQuickRolls()" class="bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-700">Apply</button>
-          </div>
-          <p class="text-[10px] text-slate-500 mt-1">Type roll numbers separated by commas and press <b>Enter</b></p>
+        <div class="flex items-center gap-2">
+          <button onclick="downloadSampleTemplate()" class="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition">
+            <i class="ph-bold ph-file-xls text-amber-600 text-sm"></i> Download Excel Template
+          </button>
+          <input type="file" id="excelAdminInput" accept=".xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
+          <button onclick="document.getElementById('excelAdminInput').click()" class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-white flex items-center gap-1.5 shadow transition">
+            <i class="ph-bold ph-file-arrow-up text-amber-400 text-sm"></i> Bulk Upload Excel
+          </button>
+          <button onclick="openAddStudentModal()" class="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-xs font-bold text-slate-950 flex items-center gap-1.5 shadow transition">
+            <i class="ph-bold ph-user-plus text-sm"></i> Add Single Student
+          </button>
         </div>
+      </div>
 
-        <div class="pt-2">
-          <div class="flex justify-between items-center mb-1">
-            <label class="block text-xs font-bold text-slate-700">Student Roster:</label>
-            <span id="absent-count-badge" class="text-xs font-bold text-rose-600">0 Absent</span>
-          </div>
-          <div id="student-grid" class="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-1 border rounded bg-slate-50">
-            <p class="text-xs text-slate-400 col-span-2 p-3 text-center">Select a class above to load students</p>
-          </div>
+      <!-- Batch Switcher for Admin View -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-mono font-bold text-slate-500">MANAGE BATCH:</span>
+          <button onclick="setAdminYear('2nd')" id="btn-admin-2nd" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950">2nd Year ME</button>
+          <button onclick="setAdminYear('3rd')" id="btn-admin-3rd" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-200">3rd Year ME</button>
         </div>
-
-        <button onclick="submitAttendance()" id="btn-submit" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded text-sm mt-4 hover:bg-blue-700">
-          Save Attendance
+        <button onclick="clearBatchData()" class="text-xs text-rose-600 hover:text-rose-800 font-mono underline">
+          Clear Selected Batch List
         </button>
       </div>
-    </div>
-  </main>
 
-  <!-- TAB 2: REGISTER BOOK (DATE RANGE GENERATOR) -->
-  <main id="tab-register" class="hidden">
-    <div class="no-print max-w-4xl mx-auto p-4">
-      <div class="bg-white p-4 rounded-lg shadow border border-slate-200 flex flex-wrap gap-3 items-end">
-        <div>
-          <label class="block text-xs font-bold text-slate-600">Class</label>
-          <select id="reg-class" class="border p-2 rounded text-sm min-w-[140px]"></select>
+      <!-- Admin Student Roster Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs sm:text-sm">
+            <thead class="bg-slate-900 text-white uppercase text-[11px] font-mono tracking-wider">
+              <tr>
+                <th class="p-3">Roll No</th>
+                <th class="p-3">Student Name</th>
+                <th class="p-3">Batch</th>
+                <th class="p-3">Labs Cleared</th>
+                <th class="p-3">HOD Status</th>
+                <th class="p-3 text-center">Manage</th>
+              </tr>
+            </thead>
+            <tbody id="adminTableBody" class="divide-y divide-slate-100 font-mono">
+              <!-- Admin roster rows -->
+            </tbody>
+          </table>
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600">From Date</label>
-          <input type="date" id="reg-from" class="border p-2 rounded text-sm">
+        <div id="adminNoData" class="hidden p-8 text-center text-slate-400 text-xs font-mono">
+          No students enrolled in this batch. Click "Bulk Upload Excel" or "Add Single Student".
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600">To Date</label>
-          <input type="date" id="reg-to" class="border p-2 rounded text-sm">
+      </div>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- STUDENT VERIFICATION PORTAL -->
+    <!-- ============================================================ -->
+    <div id="student-section" class="hidden max-w-2xl mx-auto space-y-6">
+      <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm text-center">
+        <div class="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl border border-amber-200 flex items-center justify-center mx-auto mb-3 text-2xl">
+          <i class="ph-bold ph-identification-card"></i>
         </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-600">Start Page #</label>
-          <input type="number" id="reg-page-start" value="1" class="border p-2 rounded text-sm w-16 text-center">
+        <span class="text-[10px] font-mono font-bold tracking-widest text-slate-400 uppercase">MCEM • DEPARTMENT OF MECHANICAL ENGINEERING</span>
+        <h2 class="text-xl font-black text-slate-900 mt-1">Student Record Certification Status</h2>
+        <p class="text-xs text-slate-500 mt-1 font-mono">Enter your Roll Number to check subject clearance and HoD certification</p>
+
+        <form onsubmit="searchStudent(event)" class="mt-6 flex gap-2">
+          <input type="text" id="studSearchRoll" required placeholder="Enter Roll Number (e.g. 24ME201)"
+            class="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-amber-500 outline-none uppercase font-mono text-sm font-bold tracking-wide" />
+          <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-6 py-3 rounded-xl transition text-xs sm:text-sm flex items-center gap-1.5 shadow-sm">
+            <i class="ph-bold ph-magnifying-glass"></i> Check
+          </button>
+        </form>
+      </div>
+
+      <div id="studentResultCard" class="hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+        <div class="flex justify-between items-start border-b pb-4">
+          <div>
+            <h3 id="res-name" class="text-lg font-bold text-slate-900 uppercase">-</h3>
+            <p id="res-roll" class="text-xs font-mono font-bold text-amber-600 mt-0.5">-</p>
+            <span id="res-year" class="inline-block mt-1 text-[11px] px-2.5 py-0.5 rounded font-mono font-bold bg-slate-100 text-slate-700">-</span>
+          </div>
+          <div class="text-right">
+            <span id="res-hod-badge" class="px-3 py-1 rounded-full text-xs font-mono font-bold inline-block">HOD Pending</span>
+          </div>
         </div>
-        <button onclick="generateBook()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-semibold">Generate</button>
-        <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded text-sm font-semibold ml-auto">Print / Save PDF</button>
+
+        <div>
+          <h4 class="text-xs font-mono font-bold text-slate-600 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <i class="ph-bold ph-check-square-offset text-amber-600"></i> Subject-Wise Status (6 Requirements)
+          </h4>
+          <div id="res-items-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs font-mono"></div>
+        </div>
+
+        <div class="border-t pt-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs font-mono flex items-center justify-between">
+          <div>
+            <p class="font-bold text-slate-500 uppercase text-[10px]">Head of Department (HoS / HOD)</p>
+            <p class="font-bold text-slate-800 text-sm mt-0.5">VIPIN VP</p>
+          </div>
+          <div id="res-hod-status" class="text-right font-bold text-slate-700 text-xs">-</div>
+        </div>
+      </div>
+
+      <div id="studentNotFound" class="hidden bg-rose-50 text-rose-700 p-4 rounded-xl border border-rose-200 text-center text-xs font-mono font-bold">
+        Roll number not found. Please verify with your department staff.
       </div>
     </div>
 
-    <!-- Container where dynamically generated A4 pages will mount -->
-    <div id="pages-container" class="flex flex-col items-center p-4"></div>
   </main>
 
-  <!-- EMBEDDED JAVASCRIPT (NO SEPARATE APP.JS NEEDED) -->
+  <!-- Add / Edit Student Modal -->
+  <div id="studentEditModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="px-5 py-4 bg-slate-900 text-white flex justify-between items-center">
+        <h3 id="modalStudentTitle" class="font-bold text-sm font-mono text-amber-400">Add Student</h3>
+        <button onclick="closeStudentModal()" class="text-slate-400 hover:text-white"><i class="ph-bold ph-x"></i></button>
+      </div>
+      <form onsubmit="handleSaveStudent(event)" class="p-5 space-y-3 font-mono text-xs">
+        <input type="hidden" id="editOriginalRoll" />
+        <div>
+          <label class="block font-bold text-slate-600 uppercase mb-1">Batch / Year</label>
+          <select id="modalYearSelect" class="w-full px-3 py-2 border rounded-xl bg-white outline-none">
+            <option value="2nd">2nd Year ME</option>
+            <option value="3rd">3rd Year ME</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-bold text-slate-600 uppercase mb-1">Roll / Register No</label>
+          <input type="text" id="modalRollInput" required class="w-full px-3 py-2 border rounded-xl uppercase outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 24ME201"/>
+        </div>
+        <div>
+          <label class="block font-bold text-slate-600 uppercase mb-1">Student Name</label>
+          <input type="text" id="modalNameInput" required class="w-full px-3 py-2 border rounded-xl uppercase outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. RAHUL K"/>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeStudentModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-slate-900 text-amber-400 font-bold rounded-xl hover:bg-slate-800">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="mt-auto py-3 bg-slate-950 text-slate-400 text-center text-xs border-t border-slate-800 font-mono">
+    MCEM • DEPARTMENT OF MECHANICAL ENGINEERING
+  </footer>
+
   <script>
-    const SUPABASE_URL = "https://kpbyxgdgbizeipsacbqd.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwYnl4Z2RnYml6ZWlwc2FjYnFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4OTgzNDksImV4cCI6MjEwNzQ3NDM0OX0.KgP4VSfPVpdxN4RsBScUC0IfxxTFtY5anKbB-OCG21s";
+    // Faculty Allocations
+    const ALLOCATIONS = {
+      "2nd": [
+        { code: "MT LAB", name: "MT LAB", staff: "Maneesh T" },
+        { code: "EEE LAB", name: "EEE LAB", staff: "Junaid AP" },
+        { code: "ADD CAD LAB", name: "ADD CAD LAB", staff: "Ashique NK" },
+        { code: "WORKSHOP", name: "WORKSHOP", staff: "Sujith N" },
+        { code: "INTERNSHIP REPORT", name: "INTERNSHIP REPORT", staff: "Ashique NK" },
+        { code: "COMPLIANCE REPORT", name: "COMPLIANCE REPORT", staff: "Ashique NK" }
+      ],
+      "3rd": [
+        { code: "HM LAB", name: "HM LAB", staff: "Shahinsha" },
+        { code: "AE LAB", name: "AE LAB", staff: "Hiba Sherin" },
+        { code: "MACHINE SHOP", name: "MACHINE SHOP", staff: "Krishnadas PE" },
+        { code: "SEMINAR REPORT", name: "SEMINAR REPORT", staff: "Ashique NK" },
+        { code: "INTERNSHIP REPORT", name: "INTERNSHIP REPORT", staff: "Maneesh T" },
+        { code: "COMPLIANCE REPORT", name: "COMPLIANCE REPORT", staff: "Maneesh T" }
+      ]
+    };
 
-    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Passwords
+    const STAFF_CREDENTIALS = {
+      "Maneesh T": "me@maneesh",
+      "Junaid AP": "me@junaid",
+      "Ashique NK": "me@ashique",
+      "Sujith N": "me@sujith",
+      "Shahinsha": "me@shahinsha",
+      "Hiba Sherin": "me@hiba",
+      "Krishnadas PE": "me@krishnadas",
+      "HOD VIPIN VP": "me@hodvipin",
+      "Admin": "me@admin"
+    };
 
-    let absentStudents = new Set();
-    let allStudentsInClass = [];
-    let institutionSettings = { college_name: '', department_name: '' };
-    let currentUserProfile = null;
+    let currentUser = null;
+    let currentYear = "2nd";
+    let adminYear = "2nd";
 
-    document.addEventListener("DOMContentLoaded", async () => {
-      await checkAuth();
+    function getStore() {
+      const data = localStorage.getItem("mcem_me_record_store_v1");
+      return data ? JSON.parse(data) : [];
+    }
 
-      const today = new Date().toISOString().split("T")[0];
-      const markDate = document.getElementById("mark-date");
-      const regFrom = document.getElementById("reg-from");
-      const regTo = document.getElementById("reg-to");
+    function saveStore(data) {
+      localStorage.setItem("mcem_me_record_store_v1", JSON.stringify(data));
+      renderTable();
+      renderAdminTable();
+    }
 
-      if (markDate) markDate.value = today;
-      if (regFrom) regFrom.value = today;
-      if (regTo) regTo.value = today;
+    function handleLogin(e) {
+      e.preventDefault();
+      const staff = document.getElementById("loginStaffSelect").value;
+      const pin = document.getElementById("loginPin").value.trim();
 
-      await loadInstitutionInfo();
-      await loadClassDropdowns();
+      if (!staff) {
+        alert("Please select your name.");
+        return;
+      }
+
+      if (pin !== STAFF_CREDENTIALS[staff]) {
+        alert("Incorrect password for " + staff + ".");
+        return;
+      }
+
+      let role = "Staff";
+      if (staff === "HOD VIPIN VP") role = "HOD";
+      if (staff === "Admin") role = "Admin";
+
+      currentUser = { name: staff, role: role };
+      sessionStorage.setItem("mcem_user_session", JSON.stringify(currentUser));
+      initUserSession();
+    }
+
+    function logoutUser() {
+      currentUser = null;
+      sessionStorage.removeItem("mcem_user_session");
+      document.getElementById("staff-dashboard").classList.add("hidden");
+      document.getElementById("admin-dashboard").classList.add("hidden");
+      document.getElementById("login-modal").classList.remove("hidden");
+      document.getElementById("session-info").classList.add("hidden");
+      document.getElementById("nav-admin").classList.add("hidden");
+      document.getElementById("nav-staff").innerHTML = '<i class="ph-bold ph-lock-key"></i> Staff';
+    }
+
+    function initUserSession() {
+      if (!currentUser) return;
+      document.getElementById("login-modal").classList.add("hidden");
+      document.getElementById("session-info").classList.remove("hidden");
+      document.getElementById("active-user-name").innerText = currentUser.name;
+
+      if (currentUser.role === "Admin") {
+        document.getElementById("nav-admin").classList.remove("hidden");
+        switchView("admin");
+      } else {
+        document.getElementById("nav-admin").classList.add("hidden");
+        if (["Shahinsha", "Hiba Sherin", "Krishnadas PE"].includes(currentUser.name)) {
+          currentYear = "3rd";
+        } else if (["Junaid AP", "Sujith N"].includes(currentUser.name)) {
+          currentYear = "2nd";
+        }
+        switchView("staff");
+      }
+    }
+
+    function setYear(yr) {
+      currentYear = yr;
+      updateBatchButtons();
+      populateRapidSubjects();
+      renderTable();
+    }
+
+    function setAdminYear(yr) {
+      adminYear = yr;
+      const b2 = document.getElementById("btn-admin-2nd");
+      const b3 = document.getElementById("btn-admin-3rd");
+      if (yr === "2nd") {
+        b2.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950";
+        b3.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-200";
+      } else {
+        b3.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-slate-950";
+        b2.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-200";
+      }
+      renderAdminTable();
+    }
+
+    function updateBatchButtons() {
+      const b2 = document.getElementById("btn-yr-2nd");
+      const b3 = document.getElementById("btn-yr-3rd");
+      if (currentYear === "2nd") {
+        b2.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition bg-amber-500 text-slate-950 shadow-sm";
+        b3.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:bg-slate-100";
+      } else {
+        b3.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition bg-amber-500 text-slate-950 shadow-sm";
+        b2.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-600 hover:bg-slate-100";
+      }
+
+      const notice = document.getElementById("staff-scope-notice");
+      if (currentUser.role === "HOD") {
+        notice.innerText = "HOD Console: Full batch sign-off";
+      } else if (currentUser.role === "Admin") {
+        notice.innerText = "Admin View";
+      } else {
+        const assigned = ALLOCATIONS[currentYear].filter(s => s.staff.toLowerCase() === currentUser.name.toLowerCase()).map(s => s.name);
+        notice.innerText = assigned.length > 0 ? `Your Subject: ${assigned.join(", ")}` : `No subjects in ${currentYear} Year`;
+      }
+    }
+
+    // Populate Rapid Subjects (INCLUDES FULL SUBJECT BREAKDOWN FOR HOD)
+    function populateRapidSubjects() {
+      const sel = document.getElementById("rapidSubjectSelect");
+      sel.innerHTML = "";
+      const subjects = ALLOCATIONS[currentYear];
+
+      if (currentUser.role === "HOD") {
+        sel.innerHTML += '<option value="HOD_CERT_ONLY">★ HoD Final Certification Only</option>';
+        sel.innerHTML += '<option value="HOD_ALL">★ Mark ALL 6 Subjects + HoD Sign</option>';
+        subjects.forEach(s => {
+          sel.innerHTML += `<option value="${s.code}">${s.name} (${s.staff})</option>`;
+        });
+        return;
+      }
+
+      if (currentUser.role === "Admin") {
+        sel.innerHTML += '<option value="ALL">All Subjects</option>';
+        subjects.forEach(s => {
+          sel.innerHTML += `<option value="${s.code}">${s.name}</option>`;
+        });
+        return;
+      }
+
+      const eligible = subjects.filter(s => s.staff.toLowerCase() === currentUser.name.toLowerCase());
+      if (eligible.length === 0) {
+        sel.innerHTML = '<option value="">(No Subject in this year)</option>';
+      } else if (eligible.length === 1) {
+        sel.innerHTML = `<option value="${eligible[0].code}">${eligible[0].name}</option>`;
+      } else {
+        sel.innerHTML = `<option value="MY_ALL">All My Subjects (${eligible.length})</option>`;
+        eligible.forEach(s => {
+          sel.innerHTML += `<option value="${s.code}">${s.name}</option>`;
+        });
+      }
+    }
+
+    function switchView(view) {
+      const staffDash = document.getElementById("staff-dashboard");
+      const adminDash = document.getElementById("admin-dashboard");
+      const loginModal = document.getElementById("login-modal");
+      const studentSec = document.getElementById("student-section");
+      const navStaff = document.getElementById("nav-staff");
+      const navAdmin = document.getElementById("nav-admin");
+      const navStud = document.getElementById("nav-student");
+
+      staffDash.classList.add("hidden");
+      adminDash.classList.add("hidden");
+      loginModal.classList.add("hidden");
+      studentSec.classList.add("hidden");
+
+      navStaff.className = "px-3 py-1.5 rounded-lg transition-all text-slate-300 hover:text-white flex items-center gap-1";
+      navAdmin.className = "px-3 py-1.5 rounded-lg transition-all text-slate-300 hover:text-white flex items-center gap-1";
+      navStud.className = "px-3 py-1.5 rounded-lg transition-all text-slate-300 hover:text-white flex items-center gap-1";
+
+      if (view === "staff") {
+        navStaff.className = "px-3 py-1.5 rounded-lg transition-all bg-amber-500 text-slate-950 font-bold shadow flex items-center gap-1";
+        if (currentUser) {
+          staffDash.classList.remove("hidden");
+          updateBatchButtons();
+          populateRapidSubjects();
+          renderTable();
+        } else {
+          loginModal.classList.remove("hidden");
+        }
+      } else if (view === "admin") {
+        navAdmin.className = "px-3 py-1.5 rounded-lg transition-all bg-amber-500 text-slate-950 font-bold shadow flex items-center gap-1";
+        if (currentUser && currentUser.role === "Admin") {
+          adminDash.classList.remove("hidden");
+          renderAdminTable();
+        } else {
+          loginModal.classList.remove("hidden");
+        }
+      } else {
+        navStud.className = "px-3 py-1.5 rounded-lg transition-all bg-amber-500 text-slate-950 font-bold shadow flex items-center gap-1";
+        studentSec.classList.remove("hidden");
+      }
+    }
+
+    // Render Main Certification Table (STICKY HEADERS APPLIED)
+    function renderTable() {
+      if (!currentUser) return;
+      const allSubjects = ALLOCATIONS[currentYear];
+      
+      let displaySubjects = [];
+      if (currentUser.role === "HOD" || currentUser.role === "Admin") {
+        displaySubjects = allSubjects;
+      } else {
+        displaySubjects = allSubjects.filter(s => s.staff.toLowerCase() === currentUser.name.toLowerCase());
+      }
+
+      const headerRow = document.getElementById("table-headers");
+      let headerHTML = `
+        <th class="p-3 w-20 sticky-th bg-slate-900 border-b border-slate-700">Roll No</th>
+        <th class="p-3 sticky-th bg-slate-900 border-b border-slate-700">Student Name</th>
+      `;
+
+      displaySubjects.forEach(sub => {
+        headerHTML += `
+          <th class="p-3 text-center text-amber-300 sticky-th bg-slate-800 border-b border-slate-700">
+            <div class="font-bold text-xs whitespace-nowrap">${sub.name}</div>
+            <div class="text-[9px] text-slate-400 font-sans tracking-normal">${sub.staff}</div>
+          </th>
+        `;
+      });
+
+      if (currentUser.role === "HOD" || currentUser.role === "Admin") {
+        headerHTML += `
+          <th class="p-3 text-center text-emerald-400 sticky-th bg-slate-950 border-b border-slate-700">
+            <div class="whitespace-nowrap">HOD VIPIN VP</div>
+            <div class="text-[9px] text-slate-400 font-sans">Certification</div>
+          </th>
+        `;
+      }
+
+      headerHTML += `<th class="p-3 text-center w-16 sticky-th bg-slate-900 border-b border-slate-700">Action</th>`;
+      headerRow.innerHTML = headerHTML;
+
+      const store = getStore();
+      const search = (document.getElementById("filterInput") ? document.getElementById("filterInput").value : "").trim().toLowerCase();
+      const filterMode = document.getElementById("certFilter") ? document.getElementById("certFilter").value : "ALL";
+
+      const filtered = store.filter(s => {
+        if (s.year !== currentYear) return false;
+        const matchesSearch = s.roll.toLowerCase().includes(search) || s.name.toLowerCase().includes(search);
+        if (!matchesSearch) return false;
+
+        if (filterMode === "PENDING_ONLY") {
+          if (currentUser.role === "HOD") return !s.hodCertified;
+          return displaySubjects.some(sub => !s.items || s.items[sub.code] !== true);
+        }
+        if (filterMode === "COMPLETED_ONLY") {
+          if (currentUser.role === "HOD") return s.hodCertified;
+          return displaySubjects.length > 0 && displaySubjects.every(sub => s.items && s.items[sub.code] === true);
+        }
+        return true;
+      });
+
+      const tbody = document.getElementById("studentTableBody");
+      const noData = document.getElementById("noDataRow");
+      tbody.innerHTML = "";
+
+      if (filtered.length === 0) {
+        noData.classList.remove("hidden");
+        return;
+      }
+      noData.classList.add("hidden");
+
+      filtered.forEach(s => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-amber-50/40 transition-colors font-mono";
+
+        let cellsHTML = `
+          <td class="p-3 font-bold text-slate-900">${s.roll}</td>
+          <td class="p-3 font-sans font-semibold text-slate-800 whitespace-nowrap">${s.name}</td>
+        `;
+
+        displaySubjects.forEach(sub => {
+          const isDone = s.items && s.items[sub.code] === true;
+          cellsHTML += `
+            <td class="p-3 text-center">
+              <label class="inline-flex items-center justify-center p-1 cursor-pointer">
+                <input type="checkbox" ${isDone ? "checked" : ""} 
+                  onchange="toggleItem('${s.roll}', '${sub.code}', this.checked)"
+                  class="w-5 h-5 text-amber-600 rounded border-slate-300 focus:ring-amber-500 cursor-pointer" />
+              </label>
+            </td>
+          `;
+        });
+
+        if (currentUser.role === "HOD" || currentUser.role === "Admin") {
+          cellsHTML += `
+            <td class="p-3 text-center font-sans">
+              <button onclick="toggleHODCertification('${s.roll}')" 
+                class="px-2.5 py-1 rounded text-xs font-bold transition ${
+                  s.hodCertified 
+                    ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 hover:bg-emerald-200' 
+                    : 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200'
+                }">
+                ${s.hodCertified ? '✓ Certified' : 'Pending'}
+              </button>
+            </td>
+          `;
+        }
+
+        cellsHTML += `
+          <td class="p-3 text-center font-sans">
+            <button onclick="quickInvertStudent('${s.roll}')" class="text-slate-400 hover:text-amber-700 text-xs px-2 py-1 rounded hover:bg-slate-100" title="Toggle Row Marks">
+              <i class="ph-bold ph-arrows-clockwise text-sm"></i>
+            </button>
+          </td>
+        `;
+
+        tr.innerHTML = cellsHTML;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function toggleItem(roll, itemCode, isChecked) {
+      let store = getStore();
+      store = store.map(s => {
+        if (s.roll === roll && s.year === currentYear) {
+          s.items = s.items || {};
+          s.items[itemCode] = isChecked;
+        }
+        return s;
+      });
+      saveStore(store);
+    }
+
+    function quickInvertStudent(roll) {
+      let store = getStore();
+      const allSubjects = ALLOCATIONS[currentYear];
+      const mySubjects = (currentUser.role === "HOD" || currentUser.role === "Admin")
+        ? allSubjects 
+        : allSubjects.filter(s => s.staff.toLowerCase() === currentUser.name.toLowerCase());
+
+      store = store.map(s => {
+        if (s.roll === roll && s.year === currentYear) {
+          s.items = s.items || {};
+          const allTrue = mySubjects.every(sub => s.items[sub.code] === true);
+          mySubjects.forEach(sub => {
+            s.items[sub.code] = !allTrue;
+          });
+        }
+        return s;
+      });
+      saveStore(store);
+    }
+
+    function toggleHODCertification(roll) {
+      let store = getStore();
+      store = store.map(s => {
+        if (s.roll === roll && s.year === currentYear) {
+          s.hodCertified = !s.hodCertified;
+        }
+        return s;
+      });
+      saveStore(store);
+    }
+
+    // Rapid Roll Certification Handler
+    function handleQuickCertify(e) {
+      e.preventDefault();
+      const action = e.submitter ? e.submitter.value : "mark";
+      const isMark = action === "mark";
+      const roll = document.getElementById("quickRollInput").value.trim().toUpperCase();
+      const selectedOption = document.getElementById("rapidSubjectSelect").value;
+
+      if (!selectedOption) {
+        alert("Please select a subject.");
+        return;
+      }
+
+      let store = getStore();
+      const student = store.find(s => s.roll.toUpperCase() === roll && s.year === currentYear);
+
+      if (!student) {
+        alert(`Roll Number "${roll}" not found in ${currentYear} Year list.`);
+        return;
+      }
+
+      student.items = student.items || {};
+
+      if (selectedOption === "HOD_CERT_ONLY") {
+        student.hodCertified = isMark;
+        alert(`HoD Final Certification ${isMark ? 'APPROVED' : 'UNMARKED'} for ${student.name} (${student.roll})`);
+      } else if (selectedOption === "HOD_ALL") {
+        const subs = ALLOCATIONS[currentYear];
+        subs.forEach(s => { student.items[s.code] = isMark; });
+        student.hodCertified = isMark;
+        alert(`Marked ALL 6 subjects & HoD sign ${isMark ? 'approved' : 'unmarked'} for ${student.name}`);
+      } else if (selectedOption === "MY_ALL" || selectedOption === "ALL") {
+        const subs = ALLOCATIONS[currentYear].filter(s => currentUser.role === "Admin" || s.staff.toLowerCase() === currentUser.name.toLowerCase());
+        subs.forEach(s => { student.items[s.code] = isMark; });
+        alert(`${isMark ? 'Marked' : 'Unmarked'} ${subs.length} subject(s) for ${student.name}`);
+      } else {
+        // Individual selected subject
+        student.items[selectedOption] = isMark;
+        alert(`${selectedOption} ${isMark ? 'marked complete' : 'unmarked'} for ${student.name}`);
+      }
+
+      saveStore(store);
+      document.getElementById("quickRollInput").value = "";
+    }
+
+    // ==========================================
+    // ADMIN PROFILE FUNCTIONS
+    // ==========================================
+    function renderAdminTable() {
+      const store = getStore().filter(s => s.year === adminYear);
+      const tbody = document.getElementById("adminTableBody");
+      const noData = document.getElementById("adminNoData");
+      tbody.innerHTML = "";
+
+      if (store.length === 0) {
+        noData.classList.remove("hidden");
+        return;
+      }
+      noData.classList.add("hidden");
+
+      const subjects = ALLOCATIONS[adminYear];
+
+      store.forEach(s => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50";
+
+        const completedCount = subjects.filter(sub => s.items && s.items[sub.code] === true).length;
+
+        tr.innerHTML = `
+          <td class="p-3 font-bold text-slate-900">${s.roll}</td>
+          <td class="p-3 font-sans font-semibold text-slate-800">${s.name}</td>
+          <td class="p-3">${s.year} Year</td>
+          <td class="p-3 font-bold ${completedCount === 6 ? 'text-emerald-600' : 'text-amber-600'}">${completedCount} / 6 Cleared</td>
+          <td class="p-3 font-bold ${s.hodCertified ? 'text-emerald-600' : 'text-slate-400'}">${s.hodCertified ? 'Certified' : 'Pending'}</td>
+          <td class="p-3 text-center space-x-2 font-sans">
+            <button onclick="openEditStudentModal('${s.roll}', '${s.year}')" class="text-indigo-600 hover:text-indigo-900 text-xs font-bold px-2 py-1 bg-indigo-50 rounded">Edit</button>
+            <button onclick="deleteStudent('${s.roll}', '${s.year}')" class="text-rose-600 hover:text-rose-900 text-xs font-bold px-2 py-1 bg-rose-50 rounded">Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openAddStudentModal() {
+      document.getElementById("modalStudentTitle").innerText = "Add Single Student";
+      document.getElementById("editOriginalRoll").value = "";
+      document.getElementById("modalRollInput").value = "";
+      document.getElementById("modalNameInput").value = "";
+      document.getElementById("modalYearSelect").value = adminYear;
+      document.getElementById("studentEditModal").classList.remove("hidden");
+    }
+
+    function openEditStudentModal(roll, yr) {
+      const store = getStore();
+      const student = store.find(s => s.roll === roll && s.year === yr);
+      if (!student) return;
+
+      document.getElementById("modalStudentTitle").innerText = "Edit Student Details";
+      document.getElementById("editOriginalRoll").value = student.roll;
+      document.getElementById("modalRollInput").value = student.roll;
+      document.getElementById("modalNameInput").value = student.name;
+      document.getElementById("modalYearSelect").value = student.year;
+      document.getElementById("studentEditModal").classList.remove("hidden");
+    }
+
+    function closeStudentModal() {
+      document.getElementById("studentEditModal").classList.add("hidden");
+    }
+
+    function handleSaveStudent(e) {
+      e.preventDefault();
+      const origRoll = document.getElementById("editOriginalRoll").value;
+      const roll = document.getElementById("modalRollInput").value.trim().toUpperCase();
+      const name = document.getElementById("modalNameInput").value.trim().toUpperCase();
+      const year = document.getElementById("modalYearSelect").value;
+
+      let store = getStore();
+
+      if (origRoll) {
+        // Edit existing student
+        store = store.map(s => {
+          if (s.roll === origRoll && s.year === year) {
+            return { ...s, roll, name, year };
+          }
+          return s;
+        });
+      } else {
+        // Add new student
+        const exists = store.some(s => s.roll === roll && s.year === year);
+        if (exists) {
+          alert(`Roll number "${roll}" already exists in ${year} Year ME!`);
+          return;
+        }
+        const defaultItems = {};
+        ALLOCATIONS[year].forEach(sub => defaultItems[sub.code] = false);
+        store.push({
+          roll, name, year,
+          items: defaultItems,
+          hodCertified: false
+        });
+      }
+
+      saveStore(store);
+      closeStudentModal();
+    }
+
+    function deleteStudent(roll, yr) {
+      if (!confirm(`Are you sure you want to remove roll no ${roll} from ${yr} Year ME?`)) return;
+      let store = getStore();
+      store = store.filter(s => !(s.roll === roll && s.year === yr));
+      saveStore(store);
+    }
+
+    function clearBatchData() {
+      if (!confirm(`CAUTION: This will delete all student records in ${adminYear} Year ME. Are you sure?`)) return;
+      let store = getStore();
+      store = store.filter(s => s.year !== adminYear);
+      saveStore(store);
+    }
+
+    // Excel Upload Handler
+    function handleExcelUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws);
+
+        let store = getStore();
+        let addedCount = 0;
+        const targetYr = currentUser && currentUser.role === "Admin" ? adminYear : currentYear;
+        const subjects = ALLOCATIONS[targetYr];
+
+        rows.forEach(r => {
+          const roll = (r["Roll number"] || r["Roll Number"] || r["Roll No"] || r["roll"] || "").toString().trim().toUpperCase();
+          const name = (r["Name"] || r["Student Name"] || r["name"] || "").toString().trim().toUpperCase();
+
+          if (roll && name) {
+            const exists = store.some(s => s.roll === roll && s.year === targetYr);
+            if (!exists) {
+              const defaultItems = {};
+              subjects.forEach(sub => defaultItems[sub.code] = false);
+
+              store.push({
+                roll,
+                name,
+                year: targetYr,
+                items: defaultItems,
+                hodCertified: false
+              });
+              addedCount++;
+            }
+          }
+        });
+
+        saveStore(store);
+        alert(`Successfully imported ${addedCount} students into ${targetYr} Year ME.`);
+        event.target.value = "";
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function downloadSampleTemplate() {
+      const templateData = [
+        { "Roll number": "1", "Name": "ABDU SUBHAN .T" },
+        { "Roll number": "2", "Name": "ADHUL KRISHNA K" },
+        { "Roll number": "3", "Name": "AHAMMED MISH AL E C" }
+      ];
+      const ws = XLSX.utils.json_to_sheet(templateData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Students");
+      XLSX.writeFile(wb, `MCEM_ME_${currentYear}_Template.xlsx`);
+    }
+
+    function toggleExportMenu() {
+      document.getElementById("exportMenuDropdown").classList.toggle("hidden");
+    }
+
+    window.addEventListener("click", function(e) {
+      if (!e.target.closest("#exportMenuDropdown") && !e.target.closest("button[onclick='toggleExportMenu()']")) {
+        const menu = document.getElementById("exportMenuDropdown");
+        if (menu) menu.classList.add("hidden");
+      }
     });
 
-    async function checkAuth() {
-      const { data: { session } } = await db.auth.getSession();
-      if (!session) {
-        window.location.href = "login.html";
+    // PDF Generator
+    function exportPendingPDF(type) {
+      toggleExportMenu();
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const store = getStore().filter(s => s.year === currentYear);
+      const allSubjects = ALLOCATIONS[currentYear];
+
+      if (store.length === 0) {
+        alert(`No students loaded for ${currentYear} Year ME.`);
         return;
       }
 
-      const { data: profile } = await db.from("profiles").select("*").eq("id", session.user.id).single();
-      if (profile) {
-        currentUserProfile = profile;
-        const teacherInput = document.getElementById("mark-teacher");
-        if (teacherInput) teacherInput.value = profile.name;
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("MCEM COLLEGE OF ENGINEERING", 105, 14, { align: "center" });
+      doc.setFontSize(11);
+      doc.text("DEPARTMENT OF MECHANICAL ENGINEERING", 105, 20, { align: "center" });
+      
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Record Certification Pending Report - ${currentYear} Year ME`, 105, 26, { align: "center" });
+      doc.text(`Generated Date: ${new Date().toLocaleDateString('en-GB')}`, 105, 31, { align: "center" });
 
-        const adminBtn = document.querySelector('a[href="admin.html"]');
-        if (adminBtn && profile.role === 'STAFF') {
-          adminBtn.style.display = 'none';
+      let tableBody = [];
+      let tableHead = [];
+
+      if (type === "subject") {
+        const mySubjects = (currentUser.role === "HOD" || currentUser.role === "Admin")
+          ? allSubjects 
+          : allSubjects.filter(s => s.staff.toLowerCase() === currentUser.name.toLowerCase());
+
+        if (mySubjects.length === 0) {
+          alert("No assigned subjects found to generate report.");
+          return;
         }
-      }
-    }
 
-    async function handleLogout() {
-      await db.auth.signOut();
-      window.location.href = "login.html";
-    }
+        const subjNames = mySubjects.map(s => s.name).join(", ");
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.text(`Faculty: ${currentUser.name} | Subject(s): ${subjNames}`, 14, 38);
 
-    function showTab(tab) {
-      document.getElementById("tab-mark").classList.toggle("hidden", tab !== "mark");
-      document.getElementById("tab-register").classList.toggle("hidden", tab !== "register");
-    }
+        tableHead = [["Sl", "Roll No", "Student Name", "Pending Subject", "Faculty In-Charge"]];
 
-    async function loadInstitutionInfo() {
-      const { data } = await db.from("institution_settings").select("*").eq("id", 1).single();
-      if (data) institutionSettings = data;
-    }
-
-    async function loadClassDropdowns() {
-      const { data: classes } = await db.from("classes").select("*").order("name");
-      const markSel = document.getElementById("mark-class");
-      const regSel = document.getElementById("reg-class");
-
-      if (markSel) markSel.innerHTML = '<option value="">-- Choose Class --</option>';
-      if (regSel) regSel.innerHTML = '';
-
-      (classes || []).forEach(c => {
-        if (markSel) markSel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-        if (regSel) regSel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-      });
-    }
-
-    async function onClassChange() {
-      const classId = document.getElementById("mark-class").value;
-      await loadSubjectsForClass(classId);
-      await loadStudents();
-    }
-
-    async function loadSubjectsForClass(classId) {
-      const subSel = document.getElementById("mark-subject");
-      subSel.innerHTML = '<option value="">-- Select Subject --</option>';
-
-      if (!classId) return;
-
-      let allocatedSubjects = [];
-      if (currentUserProfile) {
-        const { data: allocs } = await db.from("course_allocations")
-          .select("subject_id, subjects(id, code, name)")
-          .eq("class_id", classId)
-          .eq("staff_id", currentUserProfile.id);
-
-        if (allocs && allocs.length > 0) {
-          allocatedSubjects = allocs.map(a => a.subjects).filter(Boolean);
-        }
-      }
-
-      if (allocatedSubjects.length > 0) {
-        allocatedSubjects.forEach(s => {
-          subSel.innerHTML += `<option value="${s.id}" selected>${s.code} - ${s.name}</option>`;
-        });
-      } else {
-        const { data: allSubs } = await db.from("subjects").select("*").order("code");
-        (allSubs || []).forEach(s => {
-          subSel.innerHTML += `<option value="${s.id}">${s.code} - ${s.name}</option>`;
-        });
-      }
-    }
-
-    async function loadStudents() {
-      const classId = document.getElementById("mark-class").value;
-      const grid = document.getElementById("student-grid");
-      absentStudents.clear();
-      updateAbsentCount();
-
-      if (!classId) {
-        grid.innerHTML = '<p class="text-xs text-slate-400 col-span-2 p-3 text-center">Select a class first</p>';
-        allStudentsInClass = [];
-        return;
-      }
-
-      const { data: students } = await db.from("students").select("*").eq("class_id", classId).order("roll_no");
-      if (!students || students.length === 0) {
-        grid.innerHTML = '<p class="text-xs text-red-500 col-span-2 p-3 text-center">No students found. Add via Admin.</p>';
-        allStudentsInClass = [];
-        return;
-      }
-
-      allStudentsInClass = students;
-
-      grid.innerHTML = students.map(s => `
-        <button type="button" id="st-${s.id}" onclick="toggleAbsent(${s.id})"
-          class="p-2 border rounded text-left text-xs bg-white text-slate-800 transition">
-          <div class="font-bold">${s.roll_no}</div>
-          <div class="truncate text-[11px]">${s.name}</div>
-          <div id="st-badge-${s.id}" class="text-[10px] text-emerald-600 font-semibold mt-1">PRESENT</div>
-        </button>
-      `).join('');
-    }
-
-    function updateAbsentCount() {
-      const badge = document.getElementById("absent-count-badge");
-      if (badge) {
-        badge.textContent = `${absentStudents.size} Absent`;
-      }
-    }
-
-    function toggleAbsent(id) {
-      const btn = document.getElementById(`st-${id}`);
-      const badge = document.getElementById(`st-badge-${id}`);
-
-      if (absentStudents.has(id)) {
-        absentStudents.delete(id);
-        btn.className = "p-2 border rounded text-left text-xs bg-white text-slate-800";
-        badge.textContent = "PRESENT";
-        badge.className = "text-[10px] text-emerald-600 font-semibold mt-1";
-      } else {
-        absentStudents.add(id);
-        btn.className = "p-2 border rounded text-left text-xs bg-red-500 text-white font-bold";
-        badge.textContent = "ABSENT";
-        badge.className = "text-[10px] text-white font-bold mt-1";
-      }
-      updateAbsentCount();
-    }
-
-    function handleQuickRollKey(event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        applyQuickRolls();
-      }
-    }
-
-    function applyQuickRolls() {
-      const input = document.getElementById("quick-roll-input");
-      const rawText = input.value.trim();
-      if (!rawText) return;
-
-      const inputRolls = rawText.split(/[\s,]+/).map(r => r.trim()).filter(Boolean);
-
-      inputRolls.forEach(rollStr => {
-        const matched = allStudentsInClass.find(s => 
-          String(s.roll_no).toLowerCase() === rollStr.toLowerCase() ||
-          parseInt(s.roll_no, 10) === parseInt(rollStr, 10)
-        );
-
-        if (matched && !absentStudents.has(matched.id)) {
-          absentStudents.add(matched.id);
-          const btn = document.getElementById(`st-${matched.id}`);
-          const badge = document.getElementById(`st-badge-${matched.id}`);
-          if (btn && badge) {
-            btn.className = "p-2 border rounded text-left text-xs bg-red-500 text-white font-bold";
-            badge.textContent = "ABSENT";
-            badge.className = "text-[10px] text-white font-bold mt-1";
-          }
-        }
-      });
-
-      updateAbsentCount();
-      input.value = "";
-    }
-
-    async function submitAttendance() {
-      const classId = document.getElementById("mark-class").value;
-      const date = document.getElementById("mark-date").value;
-      const period = parseInt(document.getElementById("mark-period").value);
-      const teacher = document.getElementById("mark-teacher").value.trim();
-      const subjectId = document.getElementById("mark-subject").value || null;
-
-      if (!classId || !teacher) return alert("Fill Class and Teacher name");
-
-      const btn = document.getElementById("btn-submit");
-      btn.disabled = true;
-      btn.textContent = "Saving...";
-
-      const { data: session, error } = await db.from("attendance_sessions").upsert({
-        class_id: classId,
-        attendance_date: date,
-        period_num: period,
-        teacher_name: teacher,
-        teacher_id: currentUserProfile?.id || null,
-        subject_id: subjectId
-      }, { onConflict: "class_id,attendance_date,period_num" }).select().single();
-
-      if (error) {
-        alert("Error: " + error.message);
-        btn.disabled = false;
-        btn.textContent = "Save Attendance";
-        return;
-      }
-
-      await db.from("attendance_absentees").delete().eq("session_id", session.id);
-
-      if (absentStudents.size > 0) {
-        const payload = Array.from(absentStudents).map(stId => ({
-          session_id: session.id,
-          student_id: stId
-        }));
-        await db.from("attendance_absentees").insert(payload);
-      }
-
-      alert("Attendance Saved Successfully!");
-      btn.disabled = false;
-      btn.textContent = "Save Attendance";
-    }
-
-    async function generateBook() {
-      const classId = document.getElementById("reg-class").value;
-      const fromDate = document.getElementById("reg-from").value;
-      const toDate = document.getElementById("reg-to").value;
-      let pageNo = parseInt(document.getElementById("reg-page-start").value) || 1;
-      const container = document.getElementById("pages-container");
-
-      container.innerHTML = "<p class='no-print text-sm p-4'>Compiling sheets...</p>";
-
-      const { data: sessions, error } = await db.from("attendance_sessions").select(`
-        id, attendance_date, period_num, teacher_name,
-        subjects ( code ),
-        attendance_absentees ( students ( id, roll_no, name ) )
-      `)
-      .eq("class_id", classId)
-      .gte("attendance_date", fromDate)
-      .lte("attendance_date", toDate)
-      .order("period_num");
-
-      if (error) {
-        container.innerHTML = `<p class='no-print text-sm text-red-500 p-4'>Error: ${error.message}</p>`;
-        return;
-      }
-
-      const dateMap = {};
-      (sessions || []).forEach(s => {
-        if (!dateMap[s.attendance_date]) dateMap[s.attendance_date] = [];
-        dateMap[s.attendance_date].push(s);
-      });
-
-      const dates = Object.keys(dateMap).sort();
-      if (dates.length === 0) {
-        container.innerHTML = "<p class='no-print text-sm text-red-500 p-4'>No attendance records found.</p>";
-        return;
-      }
-
-      container.innerHTML = "";
-      const roman = ["I", "II", "III", "IV", "V", "VI"];
-
-      dates.forEach(d => {
-        const daySessions = dateMap[d] || [];
-        const pMap = {};
-        const studentAbsences = {};
-
-        daySessions.forEach(s => {
-          const absFormatted = s.attendance_absentees
-            .map(a => `${a.students.roll_no} - ${a.students.name}`)
-            .join(", ");
-
-          pMap[s.period_num] = {
-            teacher: s.teacher_name,
-            subject: s.subjects?.code || "",
-            absentees: absFormatted,
-            count: s.attendance_absentees.length
-          };
-
-          s.attendance_absentees.forEach(a => {
-            const sid = a.students.id;
-            if (!studentAbsences[sid]) studentAbsences[sid] = { text: `${a.students.roll_no} - ${a.students.name}`, count: 0, periods: [] };
-            studentAbsences[sid].count++;
-            studentAbsences[sid].periods.push(s.period_num);
+        let sl = 1;
+        store.forEach(st => {
+          mySubjects.forEach(sub => {
+            if (!st.items || st.items[sub.code] !== true) {
+              tableBody.push([sl++, st.roll, st.name, sub.name, sub.staff]);
+            }
           });
         });
 
-        const hourly = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
-        const fn = [], an = [];
-        Object.values(studentAbsences).forEach(st => {
-          if (hourly[st.count]) hourly[st.count].push(st.text);
-          if ([1, 2, 3].every(p => st.periods.includes(p))) fn.push(st.text);
-          if ([4, 5, 6].every(p => st.periods.includes(p))) an.push(st.text);
+      } else {
+        tableHead = [["Sl", "Roll No", "Student Name", "Pending Requirements (Faculty)", "HOD Sign"]];
+        let sl = 1;
+        store.forEach(st => {
+          const uncompleted = allSubjects.filter(sub => !st.items || st.items[sub.code] !== true);
+          if (uncompleted.length > 0 || !st.hodCertified) {
+            const listStr = uncompleted.map(u => `${u.name} (${u.staff})`).join("\n");
+            tableBody.push([
+              sl++, 
+              st.roll, 
+              st.name, 
+              listStr || "All Labs Cleared", 
+              st.hodCertified ? "Certified" : "Pending"
+            ]);
+          }
+        });
+      }
+
+      if (tableBody.length === 0) {
+        alert("Zero pending records found! All students are certified.");
+        return;
+      }
+
+      doc.autoTable({
+        startY: type === "subject" ? 42 : 36,
+        head: tableHead,
+        body: tableBody,
+        theme: "grid",
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [248, 250, 252] }
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 20;
+      if (finalY < 275) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.text("Staff In-Charge", 20, finalY);
+        doc.text("Head of Department (VIPIN VP)", 130, finalY);
+      }
+
+      doc.save(`MCEM_ME_${currentYear}_Pending_Report_${type}.pdf`);
+    }
+
+    // Student Lookup
+    function searchStudent(e) {
+      e.preventDefault();
+      const roll = document.getElementById("studSearchRoll").value.trim().toUpperCase();
+      const card = document.getElementById("studentResultCard");
+      const notFound = document.getElementById("studentNotFound");
+      const store = getStore();
+
+      const student = store.find(s => s.roll.toUpperCase() === roll);
+
+      if (student) {
+        notFound.classList.add("hidden");
+        card.classList.remove("hidden");
+
+        document.getElementById("res-name").innerText = student.name;
+        document.getElementById("res-roll").innerText = student.roll;
+        document.getElementById("res-year").innerText = `${student.year} Year Mechanical Engineering`;
+
+        const hodBadge = document.getElementById("res-hod-badge");
+        const hodStatus = document.getElementById("res-hod-status");
+
+        if (student.hodCertified) {
+          hodBadge.innerText = "✓ Certified by HOD VIPIN VP";
+          hodBadge.className = "px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-100 text-emerald-900 border border-emerald-300";
+          hodStatus.innerHTML = '<span class="text-emerald-700">✓ CERTIFIED & APPROVED</span>';
+        } else {
+          hodBadge.innerText = "HOD Certification Pending";
+          hodBadge.className = "px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300";
+          hodStatus.innerHTML = '<span class="text-amber-700">PENDING FINAL SIGN-OFF</span>';
+        }
+
+        const itemsGrid = document.getElementById("res-items-grid");
+        itemsGrid.innerHTML = "";
+        const subjects = ALLOCATIONS[student.year] || ALLOCATIONS["2nd"];
+
+        subjects.forEach(sub => {
+          const done = student.items && student.items[sub.code] === true;
+          const div = document.createElement("div");
+          div.className = `p-2.5 rounded-xl border flex flex-col justify-between ${
+            done ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950' : 'bg-rose-50/70 border-rose-200 text-rose-950'
+          }`;
+          div.innerHTML = `
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-slate-800">${sub.name}</span>
+              <span class="font-bold text-xs ${done ? 'text-emerald-700' : 'text-rose-700'}">${done ? '✓ Approved' : '✕ Pending'}</span>
+            </div>
+            <div class="text-[10px] text-slate-500 font-sans mt-1">Faculty: ${sub.staff}</div>
+          `;
+          itemsGrid.appendChild(div);
         });
 
-        const rows = [1, 2, 3, 4, 5, 6].map(num => `
-          <tr style="min-height: 28px;">
-            <td class="border border-black text-center font-bold py-1">${roman[num-1]}</td>
-            <td class="border border-black px-2 py-1 text-xs truncate max-w-[110px]">${pMap[num]?.teacher || ""}</td>
-            <td class="border border-black px-2 py-1 text-xs text-center font-semibold">${pMap[num]?.subject || ""}</td>
-            <td class="border border-black px-2 py-1 text-[10.5px] leading-snug break-words">${pMap[num]?.absentees || ""}</td>
-            <td class="border border-black text-center font-medium">${pMap[num]?.count ?? ""}</td>
-            <td class="border border-black"></td>
-          </tr>
-        `).join("");
+      } else {
+        card.classList.add("hidden");
+        notFound.classList.remove("hidden");
+      }
+    }
 
-        const dayName = new Date(d).toLocaleDateString("en-US", { weekday: "long" });
-
-        container.innerHTML += `
-          <div class="a4-page bg-white border border-neutral-300 p-[10mm] shadow-lg w-[210mm] h-[297mm] max-h-[297mm] overflow-hidden flex flex-col justify-between font-serif mb-8">
-            <div>
-              <div class="text-center font-bold">
-                <h1 class="text-base uppercase tracking-wider">${institutionSettings.college_name || 'COLLEGE NAME'}</h1>
-                <h2 class="text-sm font-semibold uppercase">${institutionSettings.department_name || 'DEPARTMENT NAME'}</h2>
-              </div>
-              <div class="flex justify-between items-end mt-2 mb-1 border-b border-black pb-1">
-                <div class="text-red-600 font-bold text-lg">${pageNo++}</div>
-                <div class="text-lg font-bold tracking-widest text-center uppercase">ATTENDANCE BOOK</div>
-                <div class="w-6"></div>
-              </div>
-              <div class="flex justify-between text-xs font-semibold mt-1 mb-2">
-                <div>Date: <span class="underline ml-1">${d}</span></div>
-                <div>Day: <span class="underline ml-1">${dayName}</span></div>
-              </div>
-              <table class="w-full border-collapse border border-black text-xs">
-                <thead>
-                  <tr class="border-b border-black text-[11px] font-bold bg-neutral-50">
-                    <th class="border border-black p-1 w-[8%] text-center leading-tight">Hour/<br>Period</th>
-                    <th class="border border-black p-1 w-[20%] text-center">Name of Teacher</th>
-                    <th class="border border-black p-1 w-[12%] text-center">Subject</th>
-                    <th class="border border-black p-1 w-[42%] text-center">Absentees (Roll No - Name)</th>
-                    <th class="border border-black p-1 w-[8%] text-center leading-tight">No. of<br>Absen-tees</th>
-                    <th class="border border-black p-1 w-[10%] text-center">Signature</th>
-                  </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-              </table>
-            </div>
-
-            <div class="mt-4">
-              <table class="w-full border-collapse border border-black text-xs mb-3">
-                <thead>
-                  <tr class="bg-neutral-800 text-white text-center font-bold text-[11px]">
-                    <th colSpan="6" class="border border-black py-0.5">Absentees</th>
-                  </tr>
-                  <tr class="border-b border-black text-[10px] font-bold">
-                    <th class="border border-black p-1 w-1/6">1 Hour/Period</th>
-                    <th class="border border-black p-1 w-1/6">2 Hours/Periods</th>
-                    <th class="border border-black p-1 w-1/6">3 Hours/Periods</th>
-                    <th class="border border-black p-1 w-1/6">4 Hours/Periods</th>
-                    <th class="border border-black p-1 w-1/6">5 Hours/Periods</th>
-                    <th class="border border-black p-1 w-1/6">6 Hours/Periods<br>(Full day)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr class="h-[52px] align-top text-[9.5px] leading-tight">
-                    ${[1,2,3,4,5,6].map(n => `<td class="border border-black p-1 break-words">${hourly[n].join(", ")}</td>`).join("")}
-                  </tr>
-                </tbody>
-              </table>
-
-              <table class="w-[65%] mx-auto border-collapse border border-black text-xs">
-                <thead>
-                  <tr class="bg-neutral-800 text-white text-center font-bold text-[10.5px]">
-                    <th class="border border-black py-0.5 w-1/2">Half Day (FN)</th>
-                    <th class="border border-black py-0.5 w-1/2">Half Day (AN)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr class="h-[46px] align-top text-[9.5px] leading-tight">
-                    <td class="border border-black p-1 break-words">${fn.join(", ")}</td>
-                    <td class="border border-black p-1 break-words">${an.join(", ")}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        `;
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('PWA Service Worker registered:', reg.scope))
+          .catch(err => console.log('Service Worker registration failed:', err));
       });
+    }
+
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const installBtn = document.getElementById('installAppBtn');
+      if (installBtn) installBtn.classList.remove('hidden');
+    });
+
+    function triggerInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choice) => {
+          if (choice.outcome === 'accepted') {
+            const installBtn = document.getElementById('installAppBtn');
+            if (installBtn) installBtn.classList.add('hidden');
+          }
+          deferredPrompt = null;
+        });
+      }
+    }
+
+    // Auto restore session
+    const savedUser = sessionStorage.getItem("mcem_user_session");
+    if (savedUser) {
+      currentUser = JSON.parse(savedUser);
+      initUserSession();
     }
   </script>
 </body>
